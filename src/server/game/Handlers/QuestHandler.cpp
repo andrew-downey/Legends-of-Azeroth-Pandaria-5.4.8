@@ -29,6 +29,7 @@
 #include "ObjectAccessor.h"
 #include "Group.h"
 #include "Battleground.h"
+#include "BattlePetTrainerMgr.h"
 #include "ScriptMgr.h"
 #include "GameObjectAI.h"
 #include "PoolMgr.h"
@@ -141,6 +142,22 @@ void WorldSession::HandleQuestgiverHelloOpcode(WorldPacket& recvData)
         return;
 
     _player->PrepareGossipMenu(creature, creature->GetGossipMenuId(), true);
+
+    // add pet battle option if creature is a battle pet trainer
+    if (sBattlePetTrainerMgr->GetTrainerTeam(creature->GetEntry()))
+    {
+        uint32 menuItemId = _player->PlayerTalkClass->GetGossipMenu().AddMenuItem(
+            GOSSIP_OPTION_BATTLEPETF_TRAINER,
+            GOSSIP_ICON_BATTLE,
+            "Battle Pet",
+            creature->GetGUID().GetCounter(),
+            GOSSIP_OPTION_BATTLEPETF_TRAINER,
+            "",
+            0
+        );
+        _player->PlayerTalkClass->GetGossipMenu().AddGossipMenuItemData(menuItemId, 0, 0);
+    }
+
     _player->SendPreparedGossip(creature);
 
     creature->AI()->OnGossipHello(_player);

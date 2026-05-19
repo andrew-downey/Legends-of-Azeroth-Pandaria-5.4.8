@@ -33,6 +33,7 @@
 #include "ReputationMgr.h"
 #include "BattlegroundMgr.h"
 #include "Battleground.h"
+#include "BattlePetTrainerMgr.h"
 #include "ScriptMgr.h"
 #include "CreatureAI.h"
 #include "SpellInfo.h"
@@ -502,6 +503,22 @@ void WorldSession::HandleGossipHelloOpcode(WorldPacket& recvData)
     {
         //_player->TalkedToCreature(unit->GetEntry(), unit->GetGUID());
         _player->PrepareGossipMenu(unit, unit->GetGossipMenuId(), true);
+
+        // add pet battle option if creature is a battle pet trainer
+        if (sBattlePetTrainerMgr->GetTrainerTeam(unit->GetEntry()))
+        {
+            uint32 menuItemId = _player->PlayerTalkClass->GetGossipMenu().AddMenuItem(
+                GOSSIP_OPTION_BATTLEPETF_TRAINER,
+                GOSSIP_ICON_BATTLE,
+                "Battle Pet",
+                unit->GetGUID().GetCounter(),
+                GOSSIP_OPTION_BATTLEPETF_TRAINER,
+                "",
+                0
+            );
+            _player->PlayerTalkClass->GetGossipMenu().AddGossipMenuItemData(menuItemId, 0, 0);
+        }
+
         _player->SendPreparedGossip(unit);
     }
 //     if (!unit->AI()->OnGossipHello(_player)) // hack, add to support ScriptAI

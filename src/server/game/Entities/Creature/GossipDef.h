@@ -50,6 +50,7 @@ enum Gossip_Option
     GOSSIP_OPTION_LEARNDUALSPEC          = 19,                   //UNIT_NPC_FLAG_GOSSIP              (1) (bonus option for GOSSIP_OPTION_TRAINER)
     GOSSIP_OPTION_PROVING_GROUNDS        = 20,                   //UNIT_NPC_FLAG_GOSSIP              (1) (bonus option for GOSSIP_OPTION_TRAINER)
     GOSSIP_OPTION_OUTDOORPVP             = 21,                   //added by code (option for outdoor pvp creatures)
+    GOSSIP_OPTION_BATTLEPETF_TRAINER    = 22,                   //added by code (option to start a pet battle with a trainer)
     GOSSIP_OPTION_MAX
 };
 

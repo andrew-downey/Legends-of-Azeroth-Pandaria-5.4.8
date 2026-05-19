@@ -31,9 +31,13 @@ BattlePet::~BattlePet()
 
 void BattlePet::Initialise(bool newBattlePet)
 {
-    // existence is checked before this, no problem should arise
-    m_npc = sBattlePetSpeciesStore.LookupEntry(m_species)->NpcId;
-    m_displayId = sObjectMgr->GetCreatureTemplate(m_npc)->GetModelByIdx(0)->CreatureDisplayID;
+    auto speciesEntry = sBattlePetSpeciesStore.LookupEntry(m_species);
+    ASSERT(speciesEntry);
+    m_npc = speciesEntry->NpcId;
+
+    if (auto creatureTemplate = sObjectMgr->GetCreatureTemplate(m_npc))
+        if (auto model = creatureTemplate->GetModelByIdx(0))
+            m_displayId = model->CreatureDisplayID;
 
     // setup initial battle pet states
     InitialiseStates(newBattlePet);
@@ -128,11 +132,14 @@ void BattlePet::InitialiseAbilities(bool wild)
     for (uint8 i = 0; i < BATTLE_PET_MAX_ABILITIES; ++i)
     {
         auto& abilityPair = (*abilities)[i];
+        if (!abilityPair.FirstTier)
+            continue;
+
         if (GetLevel() < abilityPair.FirstTier->RequiredLevel)
             continue;
 
         auto abilityEntry = abilityPair.FirstTier;
-        if (GetLevel() >= abilityPair.SecondTier->RequiredLevel)
+        if (abilityPair.SecondTier && GetLevel() >= abilityPair.SecondTier->RequiredLevel)
         {
             switch (i)
             {

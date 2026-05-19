@@ -24,6 +24,8 @@
 #include "Battleground.h"
 #include "BattlegroundMgr.h"
 #include "BattlePetMgr.h"
+#include "BattlePetTrainerMgr.h"
+#include "PetBattle.h"
 #include "CellImpl.h"
 #include "Channel.h"
 #include "ChannelMgr.h"
@@ -15724,6 +15726,99 @@ void Player::OnGossipSelect(WorldObject* source, uint32 gossipListId, uint32 men
 
             lfg::LfgDungeonSet scenario = { 658 };
             sLFGMgr->JoinLfg(this, lfg::PLAYER_ROLE_DAMAGE, scenario, "");
+            break;
+        }
+        case GOSSIP_OPTION_BATTLEPETF_TRAINER:
+        {
+            Creature* trainer = source->ToCreature();
+            if (!trainer)
+                break;
+
+            // validate trainer
+            if (!sBattlePetTrainerMgr->GetTrainerTeam(trainer->GetEntry()))
+            {
+                GetSession()->SendPetBattleRequestFailed(PET_BATTLE_REQUEST_NEED_TO_BE_TRAINER);
+                break;
+            }
+
+            // validate player state
+            if (!IsAlive())
+            {
+                GetSession()->SendPetBattleRequestFailed(PET_BATTLE_REQUEST_DEAD);
+                break;
+            }
+
+            if (IsInCombat())
+            {
+                GetSession()->SendPetBattleRequestFailed(PET_BATTLE_REQUEST_ALREADY_IN_COMBAT);
+                break;
+            }
+
+            if (sPetBattleSystem->GetPlayerPetBattle(GetGUID()))
+            {
+                GetSession()->SendPetBattleRequestFailed(PET_BATTLE_REQUEST_ALREADY_IN_PETBATTLE);
+                break;
+            }
+
+            // validate trainer is within distance
+            if (!trainer->IsWithinDistInMap(this, PETBATTLE_INTERACTION_DIST))
+            {
+                GetSession()->SendPetBattleRequestFailed(PET_BATTLE_REQUEST_TOO_FAR);
+                break;
+            }
+
+            // validate player has at least one pet
+            BattlePetMgr& battlePetMgr = GetBattlePetMgr();
+            if (!battlePetMgr.GetLoadoutSlot(0))
+            {
+                GetSession()->SendPetBattleRequestFailed(PET_BATTLE_REQUEST_NEED_AT_LEAST_1_PET_IN_SLOT);
+                break;
+            }
+
+            // check all pets aren't dead
+            bool allDead = true;
+            for (uint8 i = 0; i < BATTLE_PET_MAX_LOADOUT_SLOTS; i++)
+                if (auto battlePet = battlePetMgr.GetBattlePet(battlePetMgr.GetLoadoutSlot(i)))
+                    if (battlePet->IsAlive())
+                    {
+                        allDead = false;
+                        break;
+                    }
+
+            if (allDead)
+            {
+                GetSession()->SendPetBattleRequestFailed(PET_BATTLE_REQUEST_PET_ALL_DEAD);
+                break;
+            }
+
+            // close gossip menu
+            PlayerTalkClass->SendCloseGossip();
+
+            // set up player
+            SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_IMMUNE_TO_NPC);
+            SetTarget(trainer->GetGUID());
+            SetRooted(true);
+
+            // set up trainer
+            trainer->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_IMMUNE_TO_PC);
+            trainer->SetTarget(GetGUID());
+            trainer->SetControlled(true, UNIT_STATE_ROOT);
+
+            // create pet battle request
+            PetBattleRequest request;
+            request.Type = PET_BATTLE_TYPE_PVE_TRAINER;
+            request.Challenger = this;
+            request.Opponent = trainer;
+            request.LocationResult = 0;
+            request.BattleFacing = 0.0f;
+            request.OpponentGuid = trainer->GetGUID();
+
+            // calculate positions based on current positions
+            request.BattleOrigin = G3D::Vector3(trainer->GetPositionX(), trainer->GetPositionY(), trainer->GetPositionZ());
+            request.TeamPositions[PET_BATTLE_TEAM_CHALLANGER] = G3D::Vector3(GetPositionX(), GetPositionY(), GetPositionZ());
+            request.TeamPositions[PET_BATTLE_TEAM_OPPONENT] = G3D::Vector3(trainer->GetPositionX(), trainer->GetPositionY(), trainer->GetPositionZ());
+
+            sPetBattleSystem->Create(request);
             break;
         }
         case GOSSIP_OPTION_LEARNDUALSPEC:

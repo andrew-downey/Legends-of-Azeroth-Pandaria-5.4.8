@@ -19,6 +19,7 @@
 #include "BattlePetAbilityEffect.h"
 #include "BattlePetMgr.h"
 #include "BattlePetSpawnMgr.h"
+#include "BattlePetTrainerMgr.h"
 #include "Player.h"
 #include "Random.h"
 
@@ -36,7 +37,7 @@ void PetBattleTeam::AddPlayer(Player* player)
             continue;
 
         auto battlePet = player->GetBattlePetMgr().GetBattlePet(battlePetId);
-        if (!battlePet->IsAlive())
+        if (!battlePet || !battlePet->IsAlive())
             continue;
 
         // bind pet battle information to battle pet
@@ -46,7 +47,7 @@ void PetBattleTeam::AddPlayer(Player* player)
         BattlePets.push_back(battlePet);
     }
 
-    if (m_petBattle->GetType() == PET_BATTLE_TYPE_PVE)
+    if (m_petBattle->GetType() == PET_BATTLE_TYPE_PVE || m_petBattle->GetType() == PET_BATTLE_TYPE_PVE_TRAINER)
         m_activePet = GetPet(0);
 }
 
@@ -65,6 +66,29 @@ void PetBattleTeam::AddWildBattlePet(Creature* creature)
         m_wildBattlePet = creature;
         SetActivePet(battlePet);
     }
+}
+
+void PetBattleTeam::AddTrainerBattlePets(Creature* creature)
+{
+    auto trainerTeam = sBattlePetTrainerMgr->GetTrainerTeam(creature->GetEntry());
+    if (!trainerTeam)
+    {
+        TC_LOG_ERROR("battlepets", "PetBattleTeam::AddTrainerBattlePets - Creature %u has no trainer team defined!", creature->GetEntry());
+        return;
+    }
+
+    sBattlePetTrainerMgr->CreateTrainerPets(*trainerTeam, this);
+
+    if (!m_wildBattlePet)
+    {
+        m_wildBattlePet = creature;
+        m_origX = creature->GetPositionX();
+        m_origY = creature->GetPositionY();
+        m_origZ = creature->GetPositionZ();
+        m_origO = creature->GetOrientation();
+    }
+
+    m_ownsPets = true;
 }
 
 void PetBattleTeam::ActivePetPrepareCast(uint32 abilityId)
@@ -317,11 +341,28 @@ void PetBattleTeam::TurnFinished()
                 battlePet->Abilities[i]->Cooldown--;
 
     if (!HasMultipleTurnAbility())
+    {
         m_ready = false;
+        if (m_owner)
+            SetReady();
+    }
 
     // Do next turn for PvE team
     if (!m_ready && !m_owner)
     {
+        // If active pet is dead, automatically swap to next available pet
+        if (!m_activePet->IsAlive())
+        {
+            BattlePetStore avaliablePets;
+            GetAvaliablePets(avaliablePets);
+            if (!avaliablePets.empty())
+            {
+                SetPendingMove(PET_BATTLE_MOVE_TYPE_SWAP_DEAD_PET, 0, avaliablePets[0]);
+                return;
+            }
+            return; // No alive pets left — HandleRound EndBattle check will catch it
+        }
+
         std::vector<uint32> avaliableAbilities;
         for (uint8 i = 0; i < BATTLE_PET_MAX_ABILITIES; i++)
             if (m_activePet->Abilities[i])
@@ -335,6 +376,11 @@ void PetBattleTeam::TurnFinished()
         else
             SetPendingMove(PET_BATTLE_MOVE_TYPE_SWAP_OR_PASS, 0, m_activePet);
     }
+}
+
+void PetBattleTeam::SetReady()
+{
+    m_ready = true;
 }
 
 void PetBattleTeam::SetPendingMove(uint8 moveType, uint32 abilityId, BattlePet* newActivePet)
@@ -386,7 +432,11 @@ PetBattle::PetBattle(uint32 battleId, PetBattleRequest const& request)
     auto opponentTeam = new PetBattleTeam(this, PET_BATTLE_TEAM_OPPONENT);
     opponentTeam->ResetActiveAbility();
 
-    if (m_type == PET_BATTLE_TYPE_PVE)
+    if (m_type == PET_BATTLE_TYPE_PVE_TRAINER)
+    {
+        opponentTeam->AddTrainerBattlePets(request.Opponent->ToCreature());
+    }
+    else if (m_type == PET_BATTLE_TYPE_PVE)
     {
         opponentTeam->AddWildBattlePet(request.Opponent->ToCreature());
 
@@ -470,7 +520,7 @@ void PetBattle::EndBattle(PetBattleTeam* lostTeam, bool forfeit)
 
                     // award XP to battle pets that actively participated in the battle
                     if (team->SeenAction.find(battlePet) != team->SeenAction.end()
-                        && GetType() == PET_BATTLE_TYPE_PVE
+                        && (GetType() == PET_BATTLE_TYPE_PVE || GetType() == PET_BATTLE_TYPE_PVE_TRAINER)
                         && m_winningTeam == team
                         && battlePet->GetLevel() != BATTLE_PET_MAX_LEVEL
                         && battlePet->IsAlive())
@@ -528,10 +578,18 @@ void PetBattle::EndBattle(PetBattleTeam* lostTeam, bool forfeit)
                 // Idk how this supposed to work. Comments on wowhead say what: only frist pet, non-pvp, don't swap pet.
                 // At current time it's uselss because in pve battles opponenet is a single pet. But nevertheless...
                 uint32 familyMask = 0;
-                if (GetType() == PET_BATTLE_TYPE_PVE)
+                if (GetType() == PET_BATTLE_TYPE_PVE || GetType() == PET_BATTLE_TYPE_PVE_TRAINER)
                     for (auto&& pet : Opponent()->BattlePets)
                         familyMask |= (1 << pet->GetFamilty());
                 player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_PET_BATTLE, 1, familyMask, 0, player);
+
+                // Give quest kill credit for defeating a pet battle trainer
+                if (GetType() == PET_BATTLE_TYPE_PVE_TRAINER)
+                {
+                    for (auto&& t : m_teams)
+                        if (auto creature = t->GetWildBattlePet())
+                            player->KilledMonsterCredit(creature->GetEntry(), creature->GetGUID());
+                }
             }
             else
                 player->ResetCriterias(CRITERIA_RESET_TYPE_LOSE_PET_BATTLE, 0);
@@ -549,7 +607,16 @@ void PetBattle::EndBattle(PetBattleTeam* lostTeam, bool forfeit)
         }
 
         if (auto creature = team->GetWildBattlePet())
-            sBattlePetSpawnMgr->LeftBattle(creature, team == lostTeam);
+        {
+            if (GetType() != PET_BATTLE_TYPE_PVE_TRAINER)
+                sBattlePetSpawnMgr->LeftBattle(creature, team == lostTeam);
+            else
+            {
+                creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_IMMUNE_TO_PC);
+                creature->SetControlled(false, UNIT_STATE_ROOT);
+                creature->NearTeleportTo(team->GetOrigX(), team->GetOrigY(), team->GetOrigZ(), team->GetOrigO());
+            }
+        }
     }
 
     m_state = PetBattleState::Finished;
@@ -630,6 +697,20 @@ void PetBattle::HandleRound()
     // cast abilities that have round end proc type
     firstTeam->DoCasts(PET_BATTLE_ABILITY_PROC_ON_ROUND_END);
     secondTeam->DoCasts(PET_BATTLE_ABILITY_PROC_ON_ROUND_END);
+
+    // Auto-swap dead NPC trainer pets before sending round result
+    for (auto&& team : m_teams)
+    {
+        if (team->GetOwner() || GetType() != PET_BATTLE_TYPE_PVE_TRAINER)
+            continue;
+        if (!team->GetActivePet()->IsAlive())
+        {
+            BattlePetStore avaliablePets;
+            team->GetAvaliablePets(avaliablePets);
+            if (!avaliablePets.empty())
+                SwapActivePet(avaliablePets[0], true);
+        }
+    }
 
     bool hasAuras = firstTeam->HasAuras() || secondTeam->HasAuras();
     if (hasAuras)
@@ -964,12 +1045,13 @@ PetBattleTeam* PetBattle::GetTeam(uint64 guid) const
 {
     for (auto team : m_teams)
     {
-        // opponent team in PvE should always be a wild battle pet
+        // opponent team in PvE wild battles should always be a wild battle pet (not a player)
         if (team->GetTeamIndex() == PET_BATTLE_TEAM_OPPONENT
-            && GetType() == PET_BATTLE_TYPE_PVE)
+            && GetType() == PET_BATTLE_TYPE_PVE
+            && GetType() != PET_BATTLE_TYPE_PVE_TRAINER)
             return nullptr;
 
-        if (team->GetOwner()->GetGUID() == guid)
+        if (team->GetOwner() && team->GetOwner()->GetGUID() == guid)
             return team;
     }
 
@@ -1031,7 +1113,7 @@ void PetBattle::SendInitialUpdate(Player * player)
         bool trapStatus = true;
 
         ObjectGuid characterGuid = ObjectGuid::Empty;
-        if ((GetType() != PET_BATTLE_TYPE_PVE || team->GetTeamIndex() == PET_BATTLE_TEAM_CHALLANGER))
+        if (team->GetOwner())
             characterGuid = team->GetOwner()->GetGUID();
 
         data.WriteBit(!trapStatus);
@@ -1108,11 +1190,11 @@ void PetBattle::SendInitialUpdate(Player * player)
     for (auto&& team : m_teams)
     {
         ObjectGuid characterGuid = ObjectGuid::Empty;
-        if ((GetType() != PET_BATTLE_TYPE_PVE || team->GetTeamIndex() == PET_BATTLE_TEAM_CHALLANGER))
+        if (team->GetOwner())
             characterGuid = team->GetOwner()->GetGUID();
 
         bool hasRoundTimeSec = false;
-        bool hasFrontPet = true;
+        bool hasFrontPet = team->GetActivePet() != nullptr;
         bool trapStatus = true;
 
         uint8 battlePetTeamIndex = 0;
@@ -1602,7 +1684,7 @@ void PetBattleSystem::Create(PetBattleRequest const& request)
     auto petBattle = new PetBattle{ battleId, request };
 
     m_playerPetBattles[request.Challenger->GetGUID()] = battleId;
-    if (request.Type != PET_BATTLE_TYPE_PVE)
+    if (request.Type == PET_BATTLE_TYPE_PVP_DUEL || request.Type == PET_BATTLE_TYPE_PVP_MATCHMAKING)
         m_playerPetBattles[request.Opponent->GetGUID()] = battleId;
 
     m_petBattles[battleId] = petBattle;

@@ -27,6 +27,7 @@
 #include "WorldSession.h"
 #include "WorldPacket.h"
 #include "BattlePetSpawnMgr.h"
+#include "BattlePetTrainerMgr.h"
 
 void WorldSession::HandlePetBattleStartPvpMatchmaking(WorldPacket& recvData)
 {
@@ -869,4 +870,168 @@ void WorldSession::SendPetBattleRequestFailed(uint8 reason)
     data.WriteBit(0);
     data << uint8(reason);
     SendPacket(&data);
+}
+
+void WorldSession::HandlePetBattleRequestUpdate(WorldPacket& recvData)
+{
+    if (!sWorld->getBoolConfig(CONFIG_PET_BATTLES_ENABLED))
+    {
+        TC_LOG_DEBUG("network", "CMSG_PET_BATTLE_REQUEST_UPDATE - Pet battles are disabled!");
+        recvData.rfinish();
+        return;
+    }
+
+    PetBattleRequest petBattleRequest;
+
+    ObjectGuid guid;
+
+    for (uint8 i = 0; i < PET_BATTLE_MAX_TEAMS; i++)
+        recvData >> petBattleRequest.TeamPositions[i].x >> petBattleRequest.TeamPositions[i].z >> petBattleRequest.TeamPositions[i].y;
+
+    recvData >> petBattleRequest.BattleOrigin.z >> petBattleRequest.BattleOrigin.y >> petBattleRequest.BattleOrigin.x;
+
+    guid[0] = recvData.ReadBit();
+    bool hasBattleFacing = !recvData.ReadBit();
+    guid[6] = recvData.ReadBit();
+    guid[3] = recvData.ReadBit();
+    guid[5] = recvData.ReadBit();
+    guid[2] = recvData.ReadBit();
+    guid[7] = recvData.ReadBit();
+    guid[1] = recvData.ReadBit();
+    guid[4] = recvData.ReadBit();
+
+    bool hasLocationResult = !recvData.ReadBit();
+
+    recvData.ReadByteSeq(guid[3]);
+    recvData.ReadByteSeq(guid[6]);
+    recvData.ReadByteSeq(guid[5]);
+    recvData.ReadByteSeq(guid[2]);
+    recvData.ReadByteSeq(guid[7]);
+    recvData.ReadByteSeq(guid[1]);
+    recvData.ReadByteSeq(guid[0]);
+    recvData.ReadByteSeq(guid[4]);
+
+    petBattleRequest.OpponentGuid = guid;
+
+    if (hasBattleFacing)
+        recvData >> petBattleRequest.BattleFacing;
+
+    if (hasLocationResult)
+        recvData >> petBattleRequest.LocationResult;
+
+    // check if player is dead
+    if (!GetPlayer()->IsAlive())
+    {
+        TC_LOG_DEBUG("network", "CMSG_PET_BATTLE_REQUEST_UPDATE - Player %u(%s) tried to initiate a trainer pet battle while dead!",
+            GetPlayer()->GetGUID().GetCounter(), GetPlayer()->GetName().c_str());
+
+        SendPetBattleRequestFailed(PET_BATTLE_REQUEST_DEAD);
+        return;
+    }
+
+    // check if player is in combat
+    if (GetPlayer()->IsInCombat())
+    {
+        TC_LOG_DEBUG("network", "CMSG_PET_BATTLE_REQUEST_UPDATE - Player %u(%s) tried to initiate a trainer pet battle while in combat!",
+            GetPlayer()->GetGUID().GetCounter(), GetPlayer()->GetName().c_str());
+
+        SendPetBattleRequestFailed(PET_BATTLE_REQUEST_ALREADY_IN_COMBAT);
+        return;
+    }
+
+    // check if player isn't already in a battle
+    if (sPetBattleSystem->GetPlayerPetBattle(GetPlayer()->GetGUID()))
+    {
+        TC_LOG_DEBUG("network", "CMSG_PET_BATTLE_REQUEST_UPDATE - Player %u(%s) tried to initiate a new trainer pet battle while still in an old pet battle!",
+            GetPlayer()->GetGUID().GetCounter(), GetPlayer()->GetName().c_str());
+
+        SendPetBattleRequestFailed(PET_BATTLE_REQUEST_ALREADY_IN_PETBATTLE);
+        return;
+    }
+
+    Creature* trainer = ObjectAccessor::GetCreatureOrPetOrVehicle(*GetPlayer(), petBattleRequest.OpponentGuid);
+    if (!trainer)
+    {
+        SendPetBattleRequestFailed(PET_BATTLE_REQUEST_INVALID_TARGET);
+        return;
+    }
+
+    // player must be able to interact with the creature
+    if (!trainer->IsWithinDistInMap(GetPlayer(), PETBATTLE_INTERACTION_DIST))
+    {
+        SendPetBattleRequestFailed(PET_BATTLE_REQUEST_TOO_FAR);
+        return;
+    }
+
+    // check if creature is a battle pet trainer
+    if (!sBattlePetTrainerMgr->GetTrainerTeam(trainer->GetEntry()))
+    {
+        TC_LOG_DEBUG("network", "CMSG_PET_BATTLE_REQUEST_UPDATE - Player %u(%s) tried to initiate a trainer pet battle but creature %u is not a trainer!",
+            GetPlayer()->GetGUID().GetCounter(), GetPlayer()->GetName().c_str(), trainer->GetEntry());
+
+        SendPetBattleRequestFailed(PET_BATTLE_REQUEST_NEED_TO_BE_TRAINER);
+        return;
+    }
+
+    auto &battlePetMgr = GetPlayer()->GetBattlePetMgr();
+
+    // player needs to have at least one battle pet loadout slot populated
+    if (!battlePetMgr.GetLoadoutSlot(0))
+    {
+        SendPetBattleRequestFailed(PET_BATTLE_REQUEST_NEED_AT_LEAST_1_PET_IN_SLOT);
+        return;
+    }
+
+    // make sure all of the players loadout pets aren't dead
+    bool allDead = true;
+    for (uint8 i = 0; i < BATTLE_PET_MAX_LOADOUT_SLOTS; i++)
+        if (auto battlePet = battlePetMgr.GetBattlePet(battlePetMgr.GetLoadoutSlot(i)))
+            if (battlePet->IsAlive())
+            {
+                allDead = false;
+                break;
+            }
+
+    if (allDead)
+    {
+        SendPetBattleRequestFailed(PET_BATTLE_REQUEST_PET_ALL_DEAD);
+        return;
+    }
+
+    // make sure there is enough room for the pet battle
+    for (uint8 i = 0; i < PET_BATTLE_MAX_TEAMS; i++)
+    {
+        G3D::Vector3& pos = petBattleRequest.TeamPositions[i];
+        G3D::Vector3& origin = petBattleRequest.BattleOrigin;
+        if (_player->GetMap()->getObjectHitPos(_player->GetPhaseMask(), origin.x, origin.y, origin.z, pos.x, pos.y, pos.z, pos.x, pos.y, pos.z, 0.0f))
+        {
+            SendPetBattleRequestFailed(PET_BATTLE_REQUEST_GROUND_NOT_ENOUGHT_SMOOTH);
+            return;
+        }
+    }
+
+    // setup player
+    _player->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_IMMUNE_TO_NPC);
+    _player->SetTarget(trainer->GetGUID());
+    _player->SetFacingTo(_player->GetAngle(petBattleRequest.TeamPositions[PET_BATTLE_TEAM_OPPONENT].x, petBattleRequest.TeamPositions[PET_BATTLE_TEAM_OPPONENT].y));
+    _player->SetRooted(true);
+
+    // setup trainer creature (root it but still targetable)
+    trainer->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_IMMUNE_TO_PC);
+    trainer->SetTarget(GetPlayer()->GetGUID());
+    trainer->SetControlled(true, UNIT_STATE_ROOT);
+
+    // Move trainer 2 yards backward (away from the fight area)
+    {
+        float x = trainer->GetPositionX() - 2.0f * std::cos(trainer->GetOrientation());
+        float y = trainer->GetPositionY() - 2.0f * std::sin(trainer->GetOrientation());
+        trainer->NearTeleportTo(x, y, trainer->GetPositionZ(), trainer->GetOrientation());
+    }
+
+    petBattleRequest.Type = PET_BATTLE_TYPE_PVE_TRAINER;
+    petBattleRequest.Challenger = GetPlayer();
+    petBattleRequest.Opponent = trainer;
+
+    // create and start pet battle
+    sPetBattleSystem->Create(petBattleRequest);
 }

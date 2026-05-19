@@ -123,6 +123,13 @@ public:
     PetBattleTeam(PetBattle* parent, PetBattleTeamIndex teamIndex)
         : m_petBattle(parent), m_teamIndex(teamIndex) { }
 
+    ~PetBattleTeam()
+    {
+        if (m_ownsPets)
+            for (auto pet : BattlePets)
+                delete pet;
+    }
+
     PetBattle* GetParentBattle() const { return m_petBattle; }
     Player* GetOwner() const { return m_owner; }
     uint64 GetOwnerGuid() const { return m_ownerGuid; }
@@ -154,8 +161,14 @@ public:
 
     uint8 GetTrapStatus() const;
 
+    float GetOrigX() const { return m_origX; }
+    float GetOrigY() const { return m_origY; }
+    float GetOrigZ() const { return m_origZ; }
+    float GetOrigO() const { return m_origO; }
+
     void AddPlayer(Player* player);
     void AddWildBattlePet(Creature* creature);
+    void AddTrainerBattlePets(Creature* creature);
 
     void ResetActiveAbility();
 
@@ -166,6 +179,7 @@ public:
     void SetTurn(uint32 turn) { m_turn = turn; }
     uint32 GetTurn() const { return m_turn; }
     void TurnFinished();
+    void SetReady();
 
     uint8 GetInputStatusFlags() const;
 
@@ -184,6 +198,11 @@ private:
     PetBattleTeamIndex m_teamIndex;
     uint32 m_turn = 0;
     bool m_ready = false;
+    bool m_ownsPets = false;
+    float m_origX = 0.0f;
+    float m_origY = 0.0f;
+    float m_origZ = 0.0f;
+    float m_origO = 0.0f;
     PendingRoundMove m_pendingMove;
 };
 
@@ -330,7 +349,8 @@ enum PetBattleType
 {
     PET_BATTLE_TYPE_PVE                     = 0,
     PET_BATTLE_TYPE_PVP_DUEL                = 1,
-    PET_BATTLE_TYPE_PVP_MATCHMAKING         = 2
+    PET_BATTLE_TYPE_PVP_MATCHMAKING         = 2,
+    PET_BATTLE_TYPE_PVE_TRAINER             = 3
 };
 
 enum PetBattleRoundResult
@@ -367,6 +387,7 @@ struct PetBattleRequest
     PetBattleType Type;
     Player* Challenger;
     Unit* Opponent;
+    
 };
 
 typedef std::vector<PetBattleEffect> PetBattleEffectStore;

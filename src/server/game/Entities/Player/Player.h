@@ -1769,6 +1769,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
     void ItemRemovedQuestCheck(uint32 entry, uint32 count);
     void KilledMonster(CreatureTemplate const* cInfo, ObjectGuid guid);
     void KilledMonsterCredit(uint32 entry, ObjectGuid guid = ObjectGuid::Empty, uint32 count = 1);
+    void PetBattleCompleteQuest(uint32 creatureEntry, ObjectGuid creatureGuid);
     void KilledPlayerCredit();
     void KillCreditGO(uint32 entry, ObjectGuid guid = ObjectGuid::Empty);
     void TalkedToCreature(uint32 entry, ObjectGuid guid);

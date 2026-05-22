@@ -560,12 +560,15 @@ void PetBattle::EndBattle(PetBattleTeam* lostTeam, bool forfeit)
                         familyMask |= (1 << pet->GetFamilty());
                 player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_PET_BATTLE, 1, familyMask, 0, player);
 
-                // Give quest kill credit for defeating a pet battle trainer
+                // Give quest credit for defeating a pet battle trainer
                 if (GetType() == PET_BATTLE_TYPE_PVE_TRAINER)
                 {
                     for (auto&& t : m_teams)
                         if (auto creature = t->GetWildBattlePet())
+                        {
                             player->KilledMonsterCredit(creature->GetEntry(), creature->GetGUID());
+                            player->PetBattleCompleteQuest(creature->GetEntry(), creature->GetGUID());
+                        }
                 }
             }
             else

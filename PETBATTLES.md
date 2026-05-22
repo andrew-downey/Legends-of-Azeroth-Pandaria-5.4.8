@@ -9,6 +9,8 @@
 | `src/server/game/BattlePet/BattlePetSpawnMgr.cpp` | Wild pet spawning, GUID management |
 | `src/server/game/BattlePet/BattlePetTrainerMgr.cpp` | Trainer roster loading |
 | `src/server/game/Handlers/BattlePetHandler.cpp` | Client packet handlers |
+| `src/server/game/BattlePet/BattlePetAbilityEffect.cpp` | Ability effect handlers (damage, heal, aura, weather, etc.) |
+| `src/server/game/BattlePet/BattlePetAura.cpp` | Aura lifecycle: `OnApply()`, `Process()`, `Expire()` |
 
 ## Battle Flow
 
@@ -28,10 +30,11 @@
 3. Pending moves processed: trainer casts ability, player casts ability or swaps pet
 4. `GetFirstAttackingTeam()` — faster pet attacks first (based on speed stat)
 5. Round start procs → abilities execute → round end procs
-6. Auras processed, stat updates sent
-7. Round result sent to player
-8. `TurnFinished()` on both teams → trainer auto-queues ability, player `m_ready = false`
-9. Death check → repeat
+6. Auto-swap trainer dead pets (if any) before sending round result
+7. Auras processed, stat updates sent
+8. Cooldowns decremented, then round result sent to player
+9. `TurnFinished()` on both teams → trainer auto-queues ability, player `m_ready = false`
+10. Death check → repeat
 
 ### 3. Pet Swapping
 
@@ -48,36 +51,40 @@ Players can swap pets at any time (alive or dead). Two separate packet paths:
 3. `SetPendingMove(SWAP_DEAD_PET)` → `m_ready = true`
 4. Next `HandleRound()` processes swap → new pet active
 
-**Trainer dead pet** — `TurnFinished()` auto-swap:
-1. Pet dies in round → `TurnFinished()` detects dead pet (line 350)
-2. `SetPendingMove(SWAP_DEAD_PET, 0, nextPet)` → `m_ready = true`
-3. Next `HandleRound()` processes swap → new pet active
+**Trainer dead pet** — auto-swap in `HandleRound()`:
+1. Pet dies in round → `HandleRound()` auto-swaps trainer dead pet to next available pet before `SendRoundResult()`
+2. Client receives pet death + swap effect in same round result packet, allowing it to proceed correctly
+3. `TurnFinished()` also queues `SWAP_DEAD_PET` pending move for trainer (used for AI ability selection on the new pet)
 
 ### 4. Pet Death
 
-1. Pet dies in round → no auto-swap in `HandleRound()`
-2. `TurnFinished()` handles pet death swap for `!m_owner` teams (trainer) via `SetPendingMove(SWAP_DEAD_PET)`
-3. Player must send `CMSG_PET_BATTLE_SET_FRONT_PET` → `SetPendingMove(SWAP_DEAD_PET)`
-4. Next round: both ready → swap processed → new pet active
+1. Pet dies in round → `Kill()` sets round result
+2. For trainer battles: `HandleRound()` auto-swaps dead trainer pet before sending round result
+3. For wild pet battles: `CATCH_OR_KILL` round result is sent, triggering catch screen
+4. `TurnFinished()` handles trainer AI: sets `SWAP_DEAD_PET` pending move and picks new ability
+5. Player must send `CMSG_PET_BATTLE_SET_FRONT_PET` → `SetPendingMove(SWAP_DEAD_PET)` for their own dead pet
+6. Next round: both ready → swap processed → new pet active
 
 ### 5. Battle End
 
 1. One team has no alive pets → `EndBattle(lostTeam)`
-2. XP calculation, quest credits, trainer creature cleanup
+2. XP calculation, achievement credit, quest credit for defeated trainer
 3. State → `Finished`
 
 ## Key Design Principles
 
 - **Trainer and player death flows are symmetric.** Both use `SetPendingMove()` → `m_ready = true` → next `HandleRound()`. The only difference is the trainer auto-submits via `TurnFinished()` while the player sends explicit client input.
 - **`TurnFinished()` is the single entry point for PvE team decision-making** — both trainer and wild opponents use the same `!m_owner` path.
-- **`HandleRound()` MUST auto-swap trainer dead pets before `SendRoundResult()`.** The client needs the swap effect in the same round as the pet death to proceed correctly. Without it, the client receives `CATCH_OR_KILL` with the trainer's pet still dead and doesn't know how to proceed.
-- **`CATCH_OR_KILL` round result is ONLY for wild pet battles (PET_BATTLE_TYPE_PVE).** Trainer pet deaths send `NORMAL` round result. The client expects `CATCH_OR_KILL` to be followed by `SMSG_PET_BATTLE_FINAL_ROUND`. In trainer battles, `CATCH_OR_KILL` was sent but the battle continued, putting the client in an invalid state waiting for the final round packet that never comes.
+- **`HandleRound()` MUST auto-swap trainer dead pets before `SendRoundResult()`.** The client needs the swap effect in the same round as the pet death to proceed correctly.
+- **`CATCH_OR_KILL` round result is ONLY for wild pet battles (`PET_BATTLE_TYPE_PVE`).** Trainer pet deaths send `NORMAL` round result.
 - **Players can swap pets at any time** (alive or dead). Two packet paths:
   - `CMSG_PET_BATTLE_INPUT` with `PET_BATTLE_MOVE_TYPE_SWAP_OR_PASS` — swap alive pet mid-round
   - `CMSG_PET_BATTLE_SET_FRONT_PET` — initial pet selection AND dead pet replacement only
 - **`CMSG_PET_BATTLE_INPUT`** is used for both ability selection AND alive pet swaps.
 - **`CanSwap()`** validates swap eligibility: no multi-turn ability running, no swap locks from abilities (e.g., Sticky Web, Banished), target pet must be alive.
 - **The `m_ready` flag is the synchronization mechanism** — both teams must be ready before `HandleRound()` runs.
+- **Weather effects (Effect 80) target all pets on both teams** via `PET_BATTLE_ABILITY_TARGET_ALL`. The aura is applied to each pet individually with per-pet state modifiers (e.g., reduced healing taken). All weather abilities have `MaxAllowed=0` (no stack cap).
+- **Quest credit for trainer battles uses `QUEST_OBJECTIVE_WINPETBATTLEAGAINSTNPC` (type 11),** not `QUEST_OBJECTIVE_MONSTER` (type 0). `KilledMonsterCredit` handles type 0; `PetBattleCompleteQuest` handles type 11.
 
 ## Fixes Applied
 
@@ -85,12 +92,12 @@ Players can swap pets at any time (alive or dead). Two separate packet paths:
 2. `BattlePetSpawnMgr.cpp:89` — `break;` instead of `break;;` — syntax bug
 3. `PetBattle.cpp:375-379` — removed `else if (m_owner && !m_ready)` auto-pass block — fixes player never getting a turn (server was auto-submitting for player)
 4. `PetBattle.h:182` — removed orphaned `SetReady()` declaration
-5. `PetBattle.cpp:692-704` — removed `HandleRound()` auto-swap block — fixes trainer/player death flow asymmetry
-6. `PetBattle.cpp:723` — added `true` parameter to `SwapActivePet(availablePets[0], true)` in `HandleRound()` auto-swap — fixes trainer second pet never appearing (was missing `ignoreAlive` flag so `CanSwap()` rejected the swap because the outgoing pet was dead)
-7. `PetBattle.cpp:989` — only set `CATCH_OR_KILL` round result for wild pet battles (`PET_BATTLE_TYPE_PVE`). Trainer pet deaths now send `NORMAL` round result. The client expects `CATCH_OR_KILL` to be followed by `SMSG_PET_BATTLE_FINAL_ROUND`. In trainer battles, `CATCH_OR_KILL` was sent but the battle continued, putting the client in an invalid state waiting for the final round packet that never comes.
-8. `PetBattle.cpp:226-239` — removed duplicate `PET_BATTLE_EFFECT_ACTIVE_PET` from `SetActivePet()`. `SwapActivePet()` already adds the effect, so `SetActivePet()` adding it caused two identical swap effects in the same round result packet.
-9. `PetBattle.cpp:725-730` — moved cooldown decrement from `TurnFinished()` to before `SendRoundResult()`. Cooldowns were being sent to the client before they were decremented, causing abilities to appear on cooldown for one extra turn.
-10. `PetBattle.cpp:697-711` — restored `HandleRound()` auto-swap for trainer dead pets. The client needs the swap effect in the same round as the pet death to proceed correctly.
+5. `PetBattle.cpp:697-711` — `HandleRound()` auto-swap for trainer dead pets with `ignoreAlive=true` — client needs swap effect in same round as pet death
+6. `PetBattle.cpp:989` — only set `CATCH_OR_KILL` round result for wild pet battles (`PET_BATTLE_TYPE_PVE`). Trainer pet deaths send `NORMAL` round result.
+7. `PetBattle.cpp:226-239` — removed duplicate `PET_BATTLE_EFFECT_ACTIVE_PET` from `SetActivePet()`. `SwapActivePet()` already adds the effect.
+8. `PetBattle.cpp:725-730` — moved cooldown decrement from `TurnFinished()` to before `SendRoundResult()`. Cooldowns were sent one turn too high.
+9. `BattlePetAbilityEffect.cpp:111` — changed weather effect target from `PET_BATTLE_ABILITY_TARGET_HEAD` to `PET_BATTLE_ABILITY_TARGET_ALL`. Weather auras now apply to all 6 pets in the battle, so swapped-in pets already have the weather effect.
+10. `Player.cpp:17975-18016`, `Player.h:1772`, `PetBattle.cpp:570` — added `PetBattleCompleteQuest()` to handle `QUEST_OBJECTIVE_WINPETBATTLEAGAINSTNPC` (type 11) quest objectives. Trainer battle victory now correctly completes quests like "Zunta" (31818).
 
 ## Current State
 
@@ -99,7 +106,7 @@ Players can swap pets at any time (alive or dead). Two separate packet paths:
 - ✅ Pet death handling: symmetric between player and trainer
 - ✅ Trainer creature cleanup: unroots, un-pacifies, teleports to original position
 - ✅ XP/achievement credit on player victory
-- ⚠️ Pet battle weather effects: not applied to incoming swapped pets (e.g., "Darkness" effect doesn't transfer to the trainer's second pet)
-- ⚠️ Quest credit: not awarded for defeating trainer (e.g., "defeat Zunta" quest credit not given)
+- ✅ Weather effects: applied to all pets on both teams, persist through swaps
+- ✅ Quest credit: `QUEST_OBJECTIVE_WINPETBATTLEAGAINSTNPC` objectives complete on trainer victory
 - ⏳ Multi-pet wild battles: not implemented (TODO at `PetBattle.cpp:434` — `AddWildBattlePet()` only adds one pet)
 - ⏳ Trainer AI: random ability selection (acceptable for 3 abilities)

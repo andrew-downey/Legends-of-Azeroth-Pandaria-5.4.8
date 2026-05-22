@@ -882,7 +882,7 @@ void GameObject::SaveToDB(uint32 mapid, uint16 spawnMask, uint32 phaseMask)
     WorldDatabase.CommitTransaction(trans);
 }
 
-bool GameObject::LoadGameObjectFromDB(uint32 guid, Map* map, bool addToMap)
+bool GameObject::LoadGameObjectFromDB(uint32 guid, Map* map, bool addToMap, bool allowDuplicate)
 {
     GameObjectData const* data = sObjectMgr->GetGOData(guid);
 
@@ -909,6 +909,12 @@ bool GameObject::LoadGameObjectFromDB(uint32 guid, Map* map, bool addToMap)
     uint32 artKit = data->artKit;
 
     m_DBTableGuid = guid;
+    if (!allowDuplicate)
+    {
+        ObjectGuid goGuid(HighGuid::GameObject, entry, guid);
+        if (map->GetObjectsStore().Find<GameObject>(goGuid))
+            return false;
+    }
     if (map->GetInstanceId() != 0)
         guid = map->GenerateLowGuid<HighGuid::GameObject>();
 

@@ -55,9 +55,9 @@ Code standards (`doc/code_standards.md`): Oracle/Sun style, 4-space indent, no t
 
 Three databases: `auth`, `characters`, `world` + optional `playerbots`. Base schemas in `sql/base/`, incremental updates in `sql/updates/`.
 
-## Sources of information
+## Pet Battle System
 
-- [GitHub repo](https://github.com/Legends-of-Azeroth/Legends-of-Azeroth-Pandaria-5.4.8) — issues, PRs, CI logs
-- [Discord](https://discord.gg/byBCHbwJEg)
-- `doc/code_standards.md` — coding conventions
-- `src/server/worldserver/worldserver.conf.dist` — all server config options
+- Full documentation in `PETBATTLES.md` — battle flow, key design principles, fixes applied, current state
+- Core files: `src/server/game/BattlePet/PetBattle.cpp`, `PetBattle.h`, `BattlePetSpawnMgr.cpp`, `BattlePetTrainerMgr.cpp`, `src/server/game/Handlers/BattlePetHandler.cpp`
+- Key rule: `HandleRound()` should NEVER auto-swap pets. Pet death swaps belong in `TurnFinished()` or via client input.
+

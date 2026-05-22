@@ -86,7 +86,7 @@ void BattlePetSpawnMgr::Initialise()
             if (m_battlePetMapPools[mapId][zoneId].m_spawnTemplates[i].Entry == npcEntry)
             {
                 duplicate = true;
-                break;;
+                break;
             }
         }
 
@@ -410,7 +410,7 @@ void BattlePetSpawnZoneMgr::RemoveCreature(Map* map, ObjectGuid guid, BattlePetS
     replacementCreature->RemoveFromWorld();
     replacementCreature->AddObjectToRemoveList();
 
-    spawnTemplate->CreaturesRelation.erase(spawnTemplate->CreaturesRelation[guid]);
+    spawnTemplate->CreaturesRelation.erase(guid);
 
     // allow original creature to spawn again
     creature->SetRespawnTime(creature->GetCreatureData()->spawntimesecs);

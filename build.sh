@@ -27,6 +27,7 @@ case "$1" in
       -DCMAKE_C_FLAGS="$C_FLAGS" \
       -DCMAKE_CXX_FLAGS="$CXX_FLAGS" \
       -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX" \
+      -DELUNA=0 \
       -DTOOLS=0
     ;;
 
@@ -40,28 +41,31 @@ case "$1" in
 
   install)
     mkdir -p "$INSTALL_PREFIX/bin"
-    if [ -f "$INSTALL_PREFIX/bin/worldserver" ]; then
-      mv "$INSTALL_PREFIX/bin/worldserver" "$INSTALL_PREFIX/bin/worldserver_old"
-      echo "Backed up worldserver -> worldserver_old"
-    fi
     if [ -f "$INSTALL_PREFIX/bin/authserver" ]; then
       mv "$INSTALL_PREFIX/bin/authserver" "$INSTALL_PREFIX/bin/authserver_old"
       echo "Backed up authserver -> authserver_old"
     fi
     cmake --install "$BUILD_DIR" --prefix "$INSTALL_PREFIX"
-    ;;
 
-  restore)
-    [ -f "$INSTALL_PREFIX/bin/worldserver_old" ] && mv -f "$INSTALL_PREFIX/bin/worldserver_old" "$INSTALL_PREFIX/bin/worldserver"
-    [ -f "$INSTALL_PREFIX/bin/authserver_old" ]  && mv -f "$INSTALL_PREFIX/bin/authserver_old" "$INSTALL_PREFIX/bin/authserver"
+    BIN_DIR="$INSTALL_PREFIX/bin"
+    VERSIONED_DIR="$BIN_DIR/worldservers"
+    TIMESTAMP=$(date +%Y%m%d-%H%M)
+    WORLDVERSION="worldserver-$TIMESTAMP"
+
+    mkdir -p "$VERSIONED_DIR"
+    cp "$BIN_DIR/worldserver" "$VERSIONED_DIR/$WORLDVERSION"
+    ln -sf "$VERSIONED_DIR/$WORLDVERSION" "$BIN_DIR/worldserver"
+    echo "Installed worldserver -> worldservers/$WORLDVERSION"
+
+    find "$VERSIONED_DIR" -name 'worldserver-*' -mtime +7 -delete 2>/dev/null || true
+    echo "Cleaned up worldserver versions older than 7 days"
     ;;
 
   *)
-    echo "Usage: $0 {configure|build|clean|install|restore}"
+    echo "Usage: $0 {configure|build|clean|install}"
     echo "  configure [--debug]  - configure build tree (Release by default, Debug with --debug)"
     echo "  build                - compile worldserver + authserver (run configure first)"
     echo "  clean                - remove build directory"
-    echo "  install              - install built binaries to $INSTALL_PREFIX (saves old binaries as *_old)"
-    echo "  restore              - restore previous binaries from *_old backups"
+    echo "  install              - install built binaries to $INSTALL_PREFIX (archives worldserver with timestamp, prunes >7 days)"
     ;;
 esac

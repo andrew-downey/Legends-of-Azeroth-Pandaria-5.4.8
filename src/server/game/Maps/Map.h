@@ -45,8 +45,9 @@ class Object;
 
 class TempSummon;
 class Player;
-class ActivePoolData;
+class       ActivePoolData;
 class CreatureGroup;
+class PoolMgr;
 struct ScriptInfo;
 struct ScriptAction;
 struct Position;
@@ -592,6 +593,9 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
         void DeleteRespawnTimes();
 
         static void DeleteRespawnTimesInDB(uint16 mapId, uint32 instanceId);
+
+        template <typename T>
+        bool ShouldBeSpawnedOnGridLoad(ObjectGuid::LowType spawnId) const;
 
         void LoadCorpseData();
         void DeleteCorpseData();

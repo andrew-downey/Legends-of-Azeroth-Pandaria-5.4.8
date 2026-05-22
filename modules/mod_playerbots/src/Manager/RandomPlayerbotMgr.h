@@ -25,6 +25,7 @@ public:
     std::string data;
 };
 
+class ChatHandler;
 class Player;
 class ObjectGuid;
 class RandomPlayerbotMgr : public PlayerbotHolder
@@ -122,6 +123,7 @@ public:
     std::map<uint8, std::vector<ObjectGuid>>& AddclassCache() { return _addclassCache; };
     void PrepareTeleportCache();
     void RandomTeleportForLevel(Player* bot);
+    static bool HandlePlayerbotConsoleCommand(ChatHandler* handler, char const* args);
 
 protected:
     void OnBotLoginInternal(Player* const bot) override;

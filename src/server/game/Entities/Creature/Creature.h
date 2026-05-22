@@ -389,8 +389,8 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
 
         void setDeathState(DeathState s) override;                   // override virtual Unit::setDeathState
 
-        bool LoadFromDB(uint32 guid, Map* map) { return LoadCreatureFromDB(guid, map, false); }
-        bool LoadCreatureFromDB(uint32 guid, Map* map, bool addToMap = true);
+        bool LoadFromDB(uint32 guid, Map* map, bool addToMap = true, bool allowDuplicate = false) { return LoadCreatureFromDB(guid, map, addToMap, allowDuplicate); }
+        bool LoadCreatureFromDB(uint32 guid, Map* map, bool addToMap = true, bool allowDuplicate = false);
         void SaveToDB();
                                                             // overriden in Pet
         virtual void SaveToDB(uint32 mapid, uint16 spawnMask, uint32 phaseMask);

@@ -4095,6 +4095,32 @@ time_t Map::GetLinkedRespawnTime(ObjectGuid guid) const
     return time_t(0);
 }
 
+template <typename T>
+bool Map::ShouldBeSpawnedOnGridLoad(ObjectGuid::LowType spawnId) const
+{
+    // Check respawn timer
+    if (std::is_same_v<T, Creature>)
+    {
+        if (GetCreatureRespawnTime(spawnId))
+            return false;
+    }
+    else if (std::is_same_v<T, GameObject>)
+    {
+        if (GetGORespawnTime(spawnId))
+            return false;
+    }
+
+    // Check spawn pool membership
+    uint32 poolId = sPoolMgr->IsPartOfAPool<T>(spawnId);
+    if (poolId && !GetPoolData().IsActiveObject<T>(spawnId))
+        return false;
+
+    return true;
+}
+
+template bool Map::ShouldBeSpawnedOnGridLoad<Creature>(ObjectGuid::LowType) const;
+template bool Map::ShouldBeSpawnedOnGridLoad<GameObject>(ObjectGuid::LowType) const;
+
 void Map::LoadCorpseData()
 {
     // TODO: corpse phase ids

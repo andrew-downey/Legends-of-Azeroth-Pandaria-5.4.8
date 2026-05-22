@@ -171,8 +171,8 @@ class TC_GAME_API GameObject : public WorldObject, public GridObject<GameObject>
 
         void SaveToDB();
         void SaveToDB(uint32 mapid, uint16 spawnMask, uint32 phaseMask);
-        bool LoadFromDB(uint32 guid, Map* map) { return LoadGameObjectFromDB(guid, map, false); }
-        bool LoadGameObjectFromDB(uint32 guid, Map* map, bool addToMap = true);
+        bool LoadFromDB(uint32 guid, Map* map, bool addToMap = true, bool allowDuplicate = false) { return LoadGameObjectFromDB(guid, map, addToMap, allowDuplicate); }
+        bool LoadGameObjectFromDB(uint32 guid, Map* map, bool addToMap = true, bool allowDuplicate = false);
         void DeleteFromDB();
 
         void SetOwnerGUID(ObjectGuid owner)

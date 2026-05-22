@@ -18,6 +18,7 @@
 #include "RandomPlayerbotMgr.h"
 
 #include <algorithm>
+#include "Chat.h"
 #include <cstdlib>
 #include <ctime>
 #include <chrono>
@@ -1288,4 +1289,165 @@ const RandomPlayerbotMgr::farm_spot* RandomPlayerbotMgr::GetFarmZoneForPlayer(Pl
 
     TC_LOG_WARN("playerbots", "No valid zone farm found for %s level: %u", player->GetName().c_str(), player->GetLevel());
     return nullptr;
+}
+
+bool RandomPlayerbotMgr::HandlePlayerbotConsoleCommand(ChatHandler* handler, char const* args)
+{
+    if (!sPlayerbotAIConfig->enabled)
+    {
+        handler->PSendSysMessage("Playerbots system is currently disabled!");
+        return false;
+    }
+
+    if (!args || !*args)
+    {
+        handler->PSendSysMessage("Usage: rndbot stats/reload/update/reset/init/clear/refresh/teleport/revive/change_strategy");
+        return false;
+    }
+
+    std::string const cmd = args;
+
+    if (cmd == "reset")
+    {
+        PlayerbotsPreparedStatement* stmt = PlayerbotsDatabase.GetPreparedStatement(PLAYERBOTS_DEL_RANDOM_BOTS);
+        PlayerbotsDatabase.Execute(stmt);
+        sRandomPlayerbotMgr->_eventCache.clear();
+        TC_LOG_INFO("playerbots", "Random bots were reset for all players. Please restart the Server.");
+        handler->PSendSysMessage("Random bots were reset for all players. Please restart the Server.");
+        return true;
+    }
+
+    if (cmd == "stats")
+    {
+        sPerformanceMonitor->PrintStats();
+        return true;
+    }
+
+    if (cmd == "reload")
+    {
+        sPlayerbotAIConfig->Initialize();
+        handler->PSendSysMessage("Playerbot config reloaded.");
+        return true;
+    }
+
+    if (cmd == "update")
+    {
+        sRandomPlayerbotMgr->UpdateAIInternal(0);
+        handler->PSendSysMessage("Random bot AI updated.");
+        return true;
+    }
+
+    std::map<std::string, ConsoleCommandHandler> handlers;
+    handlers["init"] = &RandomPlayerbotMgr::RandomizeFirst;
+    handlers["clear"] = &RandomPlayerbotMgr::Clear;
+    handlers["refresh"] = &RandomPlayerbotMgr::Refresh;
+    handlers["teleport"] = &RandomPlayerbotMgr::RandomTeleportForLevel;
+    handlers["revive"] = &RandomPlayerbotMgr::Revive;
+
+    for (std::map<std::string, ConsoleCommandHandler>::iterator j = handlers.begin(); j != handlers.end(); ++j)
+    {
+        std::string const prefix = j->first;
+        if (cmd.find(prefix) != 0)
+            continue;
+
+        std::string name = cmd.size() > prefix.size() + 1 ? cmd.substr(prefix.size() + 1) : "%";
+
+        std::vector<uint32> botIds;
+        for (std::vector<uint32>::iterator i = sPlayerbotAIConfig->randomBotAccounts.begin(); i != sPlayerbotAIConfig->randomBotAccounts.end(); ++i)
+        {
+            uint32 account = *i;
+            QueryResult results = CharacterDatabase.PQuery("SELECT guid FROM characters WHERE account = {} AND name LIKE '{}'", account, name.c_str());
+            if (results)
+            {
+                do
+                {
+                    Field* fields = results->Fetch();
+                    uint32 botId = fields[0].GetUInt32();
+                    ObjectGuid guid = ObjectGuid::Create<HighGuid::Player>(botId);
+                    if (!sRandomPlayerbotMgr->IsRandomBot(guid.GetCounter()))
+                        continue;
+                    Player* bot = ObjectAccessor::FindPlayer(guid);
+                    if (!bot)
+                        continue;
+                    botIds.push_back(botId);
+                } while (results->NextRow());
+            }
+        }
+
+        if (botIds.empty())
+        {
+            handler->PSendSysMessage("Nothing to do");
+            return true;
+        }
+
+        uint32 processed = 0;
+        for (std::vector<uint32>::iterator i = botIds.begin(); i != botIds.end(); ++i)
+        {
+            ObjectGuid guid = ObjectGuid::Create<HighGuid::Player>(*i);
+            Player* bot = ObjectAccessor::FindPlayer(guid);
+            if (!bot)
+                continue;
+
+            TC_LOG_INFO("playerbots", "[{}/{}] Processing command {} for bot {}", processed++, botIds.size(), cmd.c_str(), bot->GetName().c_str());
+            ConsoleCommandHandler handler_fn = j->second;
+            (sRandomPlayerbotMgr->*handler_fn)(bot);
+        }
+
+        handler->PSendSysMessage("Command {} processed for {} bots.", cmd.c_str(), processed);
+        return true;
+    }
+
+    if (cmd.find("change_strategy") == 0)
+    {
+        std::string const strategyPrefix = "change_strategy";
+        std::string name = cmd.size() > strategyPrefix.size() + 1 ? cmd.substr(strategyPrefix.size() + 1) : "%";
+
+        std::vector<uint32> botIds;
+        for (std::vector<uint32>::iterator i = sPlayerbotAIConfig->randomBotAccounts.begin(); i != sPlayerbotAIConfig->randomBotAccounts.end(); ++i)
+        {
+            uint32 account = *i;
+            QueryResult results = CharacterDatabase.PQuery("SELECT guid FROM characters WHERE account = {} AND name LIKE '{}'", account, name.c_str());
+            if (results)
+            {
+                do
+                {
+                    Field* fields = results->Fetch();
+                    uint32 botId = fields[0].GetUInt32();
+                    ObjectGuid guid = ObjectGuid::Create<HighGuid::Player>(botId);
+                    if (!sRandomPlayerbotMgr->IsRandomBot(guid.GetCounter()))
+                        continue;
+                    Player* bot = ObjectAccessor::FindPlayer(guid);
+                    if (!bot)
+                        continue;
+                    botIds.push_back(botId);
+                } while (results->NextRow());
+            }
+        }
+
+        if (botIds.empty())
+        {
+            handler->PSendSysMessage("Nothing to do");
+            return true;
+        }
+
+        uint32 processed = 0;
+        for (std::vector<uint32>::iterator i = botIds.begin(); i != botIds.end(); ++i)
+        {
+            ObjectGuid guid = ObjectGuid::Create<HighGuid::Player>(*i);
+            Player* bot = ObjectAccessor::FindPlayer(guid);
+            if (!bot)
+                continue;
+
+            TC_LOG_INFO("playerbots", "[{}/{}] Processing command {} for bot {}", processed++, botIds.size(), cmd.c_str(), bot->GetName().c_str());
+            PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
+            if (botAI)
+                botAI->ChangeStrategy(sPlayerbotAIConfig->combatStrategies, BOT_STATE_COMBAT);
+        }
+
+        handler->PSendSysMessage("Command {} processed for {} bots.", cmd.c_str(), processed);
+        return true;
+    }
+
+    handler->PSendSysMessage("Usage: rndbot stats/reload/update/reset/init/clear/refresh/teleport/revive/change_strategy");
+    return false;
 }

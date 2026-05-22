@@ -108,7 +108,7 @@ static BattlePetAbilityEffectHandler Handlers[PET_BATTLE_TOTAL_ABILITY_EFFECTS] 
     /* Effect 077 */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },
     /* Effect 078 */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },
     /* Effect 079 */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },
-    /* Effect 080 */ { &BattlePetAbilityEffect::HandleWeatherAura,              PET_BATTLE_ABILITY_TARGET_HEAD   },
+    /* Effect 080 */ { &BattlePetAbilityEffect::HandleWeatherAura,              PET_BATTLE_ABILITY_TARGET_ALL    },
     /*   UNUSED   */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },
     /*   UNUSED   */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },
     /*   UNUSED   */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },

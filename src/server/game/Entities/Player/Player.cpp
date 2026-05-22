@@ -17972,6 +17972,49 @@ void Player::KilledMonsterCredit(uint32 entry, ObjectGuid guid /*= 0*/, uint32 c
     }
 }
 
+void Player::PetBattleCompleteQuest(uint32 creatureEntry, ObjectGuid creatureGuid)
+{
+    for (uint8 i = 0; i < MAX_QUEST_LOG_SIZE; ++i)
+    {
+        uint32 questId = GetQuestSlotQuestId(i);
+        if (!questId)
+            continue;
+
+        Quest const* qInfo = sObjectMgr->GetQuestTemplate(questId);
+        if (!qInfo)
+            continue;
+
+        if (!qInfo->HasQuestObjectiveType(QUEST_OBJECTIVE_WINPETBATTLEAGAINSTNPC))
+            continue;
+
+        QuestStatusData& questStatus = m_QuestStatus[questId];
+        if (questStatus.Status != QUEST_STATUS_INCOMPLETE)
+            continue;
+
+        for (auto const& questObjective : qInfo->Objectives)
+        {
+            if (questObjective.Type == QUEST_OBJECTIVE_WINPETBATTLEAGAINSTNPC && questObjective.ObjectID == creatureEntry)
+            {
+                uint32 currentCounter = GetQuestObjectiveCounter(questObjective.ID);
+                if (currentCounter < uint32(questObjective.Amount))
+                {
+                    uint32 addCount = std::min<uint32>(1, questObjective.Amount - currentCounter);
+
+                    m_questObjectiveStatus[questObjective.ID] += addCount;
+                    MarkQuestObjectiveToSave(questId, questObjective.ID);
+
+                    SendQuestUpdateAddCredit(qInfo, &questObjective, creatureGuid, currentCounter, addCount);
+                }
+
+                if (CanCompleteQuest(questId))
+                    CompleteQuest(questId);
+
+                break;
+            }
+        }
+    }
+}
+
 void Player::KilledPlayerCredit()
 {
     uint16 addKillCount = 1;

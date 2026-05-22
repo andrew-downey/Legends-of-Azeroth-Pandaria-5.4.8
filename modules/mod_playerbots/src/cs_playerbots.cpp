@@ -27,10 +27,16 @@ public:
 
     std::vector<ChatCommand> GetCommands() const override
     {
+        static std::vector<ChatCommand> playerbotsCommandTable =
+        {
+            { "bot",            SEC_PLAYER,     false,  &HandlePlayerbotCommand },
+            { "pmon",           SEC_GAMEMASTER, true,   &HandlePerfMonCommand },
+            { "rndbot",         SEC_GAMEMASTER, true,   &HandleRandomPlayerbotCommand },
+        };
+
         static std::vector<ChatCommand> commandTable =
         {
-            { "npcbot",         SEC_ADMINISTRATOR,          true,           &HandlePlayerbotCommand},
-            { "pmon",           SEC_GAMEMASTER,             true,           &HandlePerfMonCommand},
+            { "playerbots", SEC_PLAYER, true, nullptr, "", playerbotsCommandTable },
         };
         return commandTable;
     }
@@ -38,6 +44,11 @@ public:
     static bool HandlePlayerbotCommand(ChatHandler* handler, char const* args)
     {
         return PlayerbotMgr::HandlePlayerbotMgrCommand(handler, args);
+    }
+
+    static bool HandleRandomPlayerbotCommand(ChatHandler* handler, char const* args)
+    {
+        return RandomPlayerbotMgr::HandlePlayerbotConsoleCommand(handler, args);
     }
 
     static bool HandlePerfMonCommand(ChatHandler* handler, char const* args)

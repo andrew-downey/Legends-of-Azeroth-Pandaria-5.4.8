@@ -1388,7 +1388,7 @@ bool Creature::CreateFromProto(uint32 guidlow, uint32 Entry, uint32 vehId, uint3
     return true;
 }
 
-bool Creature::LoadCreatureFromDB(uint32 guid, Map* map, bool addToMap)
+bool Creature::LoadCreatureFromDB(uint32 guid, Map* map, bool addToMap, bool allowDuplicate)
 {
     CreatureData const* data = sObjectMgr->GetCreatureData(guid);
 
@@ -1402,7 +1402,13 @@ bool Creature::LoadCreatureFromDB(uint32 guid, Map* map, bool addToMap)
         if (!map->CheckGameEventSpawn(data->gameEventId))
             return false;
 
-    m_spawnId = guid;
+  m_spawnId = guid;
+    if (!allowDuplicate)
+    {
+        ObjectGuid creatureGuid(HighGuid::Unit, data->id, guid);
+        if (map->GetObjectsStore().Find<Creature>(creatureGuid))
+            return false;
+    }
     if (map->GetInstanceId() == 0)
     {
         if (map->GetCreature(ObjectGuid(HighGuid::Unit, data->id, guid)))

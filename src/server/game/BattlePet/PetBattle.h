@@ -178,8 +178,7 @@ public:
 
     void SetTurn(uint32 turn) { m_turn = turn; }
     uint32 GetTurn() const { return m_turn; }
-    void TurnFinished();
-    void SetReady();
+   void TurnFinished();
 
     uint8 GetInputStatusFlags() const;
 

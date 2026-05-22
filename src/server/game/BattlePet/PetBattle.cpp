@@ -226,15 +226,7 @@ void PetBattleTeam::GetAvaliablePets(BattlePetStore &avaliablePets) const
 void PetBattleTeam::SetActivePet(BattlePet* battlePet)
 {
     m_activePet = battlePet;
-
-    // alert client of active pet swap
-    PetBattleEffect effect{ PET_BATTLE_EFFECT_ACTIVE_PET, battlePet->GetGlobalIndex() };
-    effect.SetActivePet(battlePet->GetGlobalIndex());
-
-    m_petBattle->AddEffect(effect);
-
     m_ready = true;
-
     SeenAction.insert(battlePet);
 }
 
@@ -334,18 +326,8 @@ void PetBattleTeam::TurnFinished()
 {
     RemoveExpiredAuras();
 
-    // reduce ability cooldowns
-    for (auto&& battlePet : BattlePets)
-        for (uint8 i = 0; i < BATTLE_PET_MAX_ABILITIES; i++)
-            if (battlePet->Abilities[i] && battlePet->Abilities[i]->Cooldown)
-                battlePet->Abilities[i]->Cooldown--;
-
     if (!HasMultipleTurnAbility())
-    {
         m_ready = false;
-        if (m_owner)
-            SetReady();
-    }
 
     // Do next turn for PvE team
     if (!m_ready && !m_owner)
@@ -376,11 +358,6 @@ void PetBattleTeam::TurnFinished()
         else
             SetPendingMove(PET_BATTLE_MOVE_TYPE_SWAP_OR_PASS, 0, m_activePet);
     }
-}
-
-void PetBattleTeam::SetReady()
-{
-    m_ready = true;
 }
 
 void PetBattleTeam::SetPendingMove(uint8 moveType, uint32 abilityId, BattlePet* newActivePet)
@@ -698,20 +675,6 @@ void PetBattle::HandleRound()
     firstTeam->DoCasts(PET_BATTLE_ABILITY_PROC_ON_ROUND_END);
     secondTeam->DoCasts(PET_BATTLE_ABILITY_PROC_ON_ROUND_END);
 
-    // Auto-swap dead NPC trainer pets before sending round result
-    for (auto&& team : m_teams)
-    {
-        if (team->GetOwner() || GetType() != PET_BATTLE_TYPE_PVE_TRAINER)
-            continue;
-        if (!team->GetActivePet()->IsAlive())
-        {
-            BattlePetStore avaliablePets;
-            team->GetAvaliablePets(avaliablePets);
-            if (!avaliablePets.empty())
-                SwapActivePet(avaliablePets[0], true);
-        }
-    }
-
     bool hasAuras = firstTeam->HasAuras() || secondTeam->HasAuras();
     if (hasAuras)
     {
@@ -729,6 +692,23 @@ void PetBattle::HandleRound()
         PetBattleEffect effect{ PET_BATTLE_EFFECT_AURA_PROCESSING_END };
         effect.SetNoTarget();
         m_effects.push_back(effect);
+    }
+
+    // Auto-swap trainer's dead pet to an alive one before sending round result
+    // The client needs this swap in the same round as the pet death to proceed correctly
+    if (GetType() == PET_BATTLE_TYPE_PVE_TRAINER)
+    {
+        for (auto&& team : m_teams)
+        {
+            if (!team->GetWildBattlePet())
+                continue;
+            if (team->GetActivePet()->IsAlive())
+                continue;
+            BattlePetStore availablePets;
+            team->GetAvaliablePets(availablePets);
+            if (!availablePets.empty())
+                SwapActivePet(availablePets[0], true);
+        }
     }
 
     // send stat updates if they changed this round
@@ -758,6 +738,13 @@ void PetBattle::HandleRound()
     // must be incremented before sending round result
     for (auto&& team : m_teams)
         team->ActiveAbility.TurnsPassed++;
+
+    // reduce ability cooldowns before sending round result
+    for (auto&& team : m_teams)
+        for (auto&& battlePet : team->BattlePets)
+            for (uint8 i = 0; i < BATTLE_PET_MAX_ABILITIES; i++)
+                if (battlePet->Abilities[i] && battlePet->Abilities[i]->Cooldown)
+                    battlePet->Abilities[i]->Cooldown--;
 
     // send round result to players
     if (m_roundResult == PET_BATTLE_ROUND_RESULT_NONE)
@@ -1016,7 +1003,8 @@ void PetBattle::Kill(BattlePet* killer, BattlePet* victim, uint32 abilityEffect,
 
     UpdatePetState(killer, victim, abilityEffect, BATTLE_PET_STATE_IS_DEAD, 1, flags);
 
-    m_roundResult = PET_BATTLE_ROUND_RESULT_CATCH_OR_KILL;
+    if (victimTeam->GetWildBattlePet() && GetType() == PET_BATTLE_TYPE_PVE)
+        m_roundResult = PET_BATTLE_ROUND_RESULT_CATCH_OR_KILL;
 }
 
 void PetBattle::Catch(BattlePet* source, BattlePet* target, uint32 abilityEffect)

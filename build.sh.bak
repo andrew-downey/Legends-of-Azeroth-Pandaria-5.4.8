@@ -19,14 +19,13 @@ case "$1" in
     else
       BUILD_TYPE=Release
       C_FLAGS="-march=native -O3"
-      CXX_FLAGS="-march=native -O3 -flto=thin"
+      CXX_FLAGS="-march=native -O3"
     fi
 
     cmake -S . -B "$BUILD_DIR" \
       -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
       -DCMAKE_C_FLAGS="$C_FLAGS" \
       -DCMAKE_CXX_FLAGS="$CXX_FLAGS" \
-      -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=gold" \
       -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX" \
       -DELUNA=0 \
       -DTOOLS=0
@@ -37,7 +36,7 @@ case "$1" in
       echo "Error: build directory '$BUILD_DIR' does not exist. Run 'configure' first." >&2
       exit 1
     fi
-    cmake --build "$BUILD_DIR" --target worldserver -j"$(nproc)"
+    cmake --build "$BUILD_DIR" --target worldserver authserver -j"$(nproc)"
     ;;
 
   install)

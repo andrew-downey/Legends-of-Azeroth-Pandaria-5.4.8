@@ -641,6 +641,10 @@ void WorldSession::HandlePetBattleInput(WorldPacket& recvData)
         return;
     }
 
+    // If active pet is dead and player chose a new one, treat as dead-pet swap
+    if (hasNewFrontPet && !team->GetActivePet()->IsAlive())
+        moveType = PET_BATTLE_MOVE_TYPE_SWAP_DEAD_PET;
+
     team->SetPendingMove(moveType, abilityId, battlePet);
 }
 

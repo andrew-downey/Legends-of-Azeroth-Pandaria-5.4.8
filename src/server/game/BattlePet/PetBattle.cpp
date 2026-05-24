@@ -115,6 +115,9 @@ void PetBattleTeam::ActivePetPrepareCast(uint32 abilityId)
 
 bool PetBattleTeam::CanActivePetCast(uint32 abilityId) const
 {
+    if (!m_activePet->IsAlive())
+        return false;
+
     if (HasMultipleTurnAbility())
         return false;
 
@@ -249,9 +252,6 @@ uint8 PetBattleTeam::GetInputStatusFlags() const
     if (HasMultipleTurnAbility())
         flags |= (PET_BATTLE_TEAM_INPUT_FLAG_LOCK_ABILITY_1 | PET_BATTLE_TEAM_INPUT_FLAG_LOCK_ABILITY_2);
 
-    if (!CanSwap())
-        flags |= PET_BATTLE_TEAM_INPUT_FLAG_LOCK_PET_SWAP;
-
     if (!m_activePet->IsAlive())
     {
         BattlePetStore avaliablePets;
@@ -261,6 +261,10 @@ uint8 PetBattleTeam::GetInputStatusFlags() const
             flags |= PET_BATTLE_TEAM_INPUT_FLAG_SELECT_NEW_PET;
         else
             flags |= PET_BATTLE_TEAM_INPUT_FLAG_LOCK_PET_SWAP;
+    }
+    else if (!CanSwap())
+    {
+        flags |= PET_BATTLE_TEAM_INPUT_FLAG_LOCK_PET_SWAP;
     }
 
     return flags;
@@ -960,15 +964,15 @@ void PetBattle::AddAura(BattlePet* source, BattlePet* target, uint32 ability, ui
     if (!duration && duration != -1)
         duration++;
 
+    if (flags)
+        return;
+
     // notify client of aura update
     PetBattleEffect effect{ PET_BATTLE_EFFECT_AURA_APPLY, source->GetGlobalIndex(), flags, abilityEffect };
     effect.SetTurn(GetTeam(source->GetTeamIndex())->GetTurn(), 1);
     effect.UpdateAura(target->GetGlobalIndex(), id, ability, duration, 0);
 
     m_effects.push_back(effect);
-
-    if (flags)
-        return;
 
     // expire auras above the allowed count
     if (maxAllowed && auraCount >= maxAllowed)

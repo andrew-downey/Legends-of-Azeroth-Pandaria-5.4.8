@@ -578,7 +578,7 @@ void BattlePetAbilityEffect::HandlePeriodicTrigger()
 void BattlePetAbilityEffect::HandlePeriodicPositiveTrigger()
 {
     CalculateHit(m_effectEntry->Properties[1]);
-    m_petBattle->AddAura(m_caster, m_target, m_effectEntry->TriggerAbility, m_effectEntry->Id, m_effectEntry->Properties[2], m_flags);
+    m_petBattle->AddAura(m_caster, m_target, m_effectEntry->TriggerAbility, m_effectEntry->Id, m_effectEntry->Properties[2], m_flags, 1);
 }
 
 // Effect 76: Points, Accuracy
@@ -589,14 +589,19 @@ void BattlePetAbilityEffect::HandleDamageToggleAura()
         return;
 
     // aura has already been applied, expire and handle damage
-    if (auto aura = m_caster->GetAura(m_effectEntry->TriggerAbility))
-    {
-        aura->Expire();
+    bool hasAura = false;
+    for (auto&& aura : m_caster->Auras)
+        if (aura->GetAbility() == m_effectEntry->TriggerAbility && !aura->HasExpired())
+        {
+            aura->Expire();
+            hasAura = true;
+        }
+
+    if (hasAura)
         Damage(m_target, CalculateDamage(m_effectEntry->Properties[0]));
-    }
     // aura has yet to be applied
     else
-        m_petBattle->AddAura(m_caster, m_caster, m_effectEntry->TriggerAbility, m_effectEntry->Id, m_effectEntry->Properties[2], m_flags);
+        m_petBattle->AddAura(m_caster, m_caster, m_effectEntry->TriggerAbility, m_effectEntry->Id, m_effectEntry->Properties[2], m_flags, 1);
 }
 
 void BattlePetAbilityEffect::HandleDamageHitState()
@@ -667,13 +672,13 @@ void BattlePetAbilityEffect::HandlePowerlessAura()
     if (m_effectEntry->Properties[3] && m_target->States[m_effectEntry->Properties[3]] == m_effectEntry->Properties[0])
     {
         if (m_reportFailAsImmune)
-            m_flags |= PET_BATTLE_EFFECT_FLAG_IMMUNE;
-        else
-            return;
+        m_flags |= PET_BATTLE_EFFECT_FLAG_IMMUNE;
+    else
+        return;
     }
 
     CalculateHit(m_effectEntry->Properties[1]);
-    m_petBattle->AddAura(m_caster, m_target, m_effectEntry->TriggerAbility, m_effectEntry->Id, m_effectEntry->Properties[2], m_flags);
+    m_petBattle->AddAura(m_caster, m_target, m_effectEntry->TriggerAbility, m_effectEntry->Id, m_effectEntry->Properties[2], m_flags, 1);
 }
 
 // Effect 80: TurnOffset, Accuracy, Duration, MaxAllowed

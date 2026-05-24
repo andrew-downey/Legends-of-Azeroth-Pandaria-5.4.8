@@ -83,27 +83,110 @@ Players can swap pets at any time (alive or dead). Two separate packet paths:
 - **`CMSG_PET_BATTLE_INPUT`** is used for both ability selection AND alive pet swaps.
 - **`CanSwap()`** validates swap eligibility: no multi-turn ability running, no swap locks from abilities (e.g., Sticky Web, Banished), target pet must be alive.
 - **The `m_ready` flag is the synchronization mechanism** — both teams must be ready before `HandleRound()` runs.
-- **Weather effects (Effect 80) target all pets on both teams** via `PET_BATTLE_ABILITY_TARGET_ALL`. The aura is applied to each pet individually with per-pet state modifiers (e.g., reduced healing taken). All weather abilities have `MaxAllowed=0` (no stack cap).
+- **Weather effects (Effect 80) target all pets on both teams** via `PET_BATTLE_ABILITY_TARGET_ALL`. The aura is applied to each pet individually with per-pet state modifiers (e.g., reduced healing taken). All weather abilities have `MaxAllowed=0` in DB2 (passed via `Properties[3]`), meaning weather auras are not capped per-pet — multiple weather effects can coexist.
 - **Quest credit for trainer battles uses `QUEST_OBJECTIVE_WINPETBATTLEAGAINSTNPC` (type 11),** not `QUEST_OBJECTIVE_MONSTER` (type 0). `KilledMonsterCredit` handles type 0; `PetBattleCompleteQuest` handles type 11.
+
+## Critical Learnings (Database)
+
+Hard-won lessons from provisioning 51 pet battle tamers:
+
+- **AllowableRaces bitmask**: Uses `(1 << (race-1))` where race is ChrRaces ID (Human=1, Orc=2, etc.). Two known masks: Alliance = 18875469 (Human+Dwarf+NightElf+Gnome+Draenei+Worgen+AlliPanda), Horde = 33555378 (Orc+Undead+Tauren+Troll+Goblin+BloodElf+HordePanda), both = 0.
+- **creature.id not creature_id**: The column in the `creature` table is `id`, not `creature_id`. Queries using the wrong name silently return empty.
+- **PrevQuestID limit**: TrinityCore supports only a single `PrevQuestID`. Faction-gated quest chains require separate duplicate quest IDs for Horde and Alliance — a single quest with conditional PrevQuestID is not possible.
+- **curhealth=1 = dead**: Creature spawns with `curhealth=1` appear dead/non-interactable. Fix: `curhealth = level × zone_multiplier` (Classic ×30, Outland ×130, Northrend ×100, Cataclysm ×135).
+- **creature_queststarter required**: `npcflag=2` (QUEST_GIVER) alone does not make an NPC show quest dialog. At least one row in `creature_queststarter` is required.
+- **gossip_menu_id=900001**: Minimal gossip menu (TextID=1) used for NPCs that only give quests but need a non-zero `gossip_menu_id`. Created via `DELETE+INSERT` and applied with `UPDATE WHERE gossip_menu_id=0`.
+- **quest_objective type=11**: Pet battle trainer quests use `QUEST_OBJECTIVE_WINPETBATTLEAGAINSTNPC` (type 11), not type 0 (`MONSTER`). Always check both `quest_objective` and `battle_pet_trainer` when auditing tamers.
+- **Quest flags**: Daily = 4096 (0x1000), First-time = 524288 (0x80000), Auto-accept = 262144 (0x40000), Zone completion = 327680 (0x50000).
+- **Varzok:63626 pre-existing issue**: Has `npcflag=50` (QUEST_GIVER+TAXI+TRAINER) but `gossip_menu_id=0`, causing "wrong gossip menu" error. Pre-existing, not introduced by our changes.
+
+## Quest Chain Architecture
+
+### First-time chains (one per faction, sequential unlock)
+
+**Horde (Kalimdor):**
+```
+Varzok:63626 → Zunta(31812) → Dagra(31813) → Analynn(31814) → Zonya(31815) → Merda(31817) → Cassandra(31870) → A Tamer's Homecoming:31918
+```
+**Alliance (Eastern Kingdoms):**
+```
+Audrey Burnhep:63596 → Julia Stevens(31316) → Old MacDonald(31724) → Lindsay(31725) → Eric Davidson(31726) → Steven Lisbane(31729) → Bill Buckler(31728) → A Tamer's Homecoming:31917
+```
+
+Completing "A Tamer's Homecoming" gates the zone-completion quests and (via PrevQuestID) the lower-tier daily quests for Classic trainers.
+
+### Zone completions → Grand Masters
+
+Each zone requires defeating all world tamers in that zone, then gates a Grand Master:
+
+| Zone | Alliance | Horde | Gated Behind | Unlocks |
+|---|---|---|---|---|
+| Kalimdor | 31889 | 31891 | Homecoming(31917/31918) | GM Trixxy (31897) |
+| Eastern Kingdoms | 33014 | 31903 | Homecoming(31917/31918) | GM Lydia Accoste (31915) |
+| Outland | 31919 | 31921 | Returning Champion chain | GM Antari (31920) |
+| Northrend | 31927 | 31929 | Exceeding Expectations | GM Payne (31928) |
+| Cataclysm | 31966 | 31967 | A Brief Reprieve | GM Obalis (31970) |
+| Pandaria | 31930 | 31952 | The Triumphant Return | GM Aki (31951) |
+
+### Daily quests
+
+Two categories:
+- **Grand Master dailies** (Zunta 31818, Hyuna 31953, Outland/Northrend/Cata/Pandaria): `PrevQuestID=0` — always available after first-time completion.
+- **Classic lower-tier dailies** (Lindsay, Dagra, Eric, Bill, Steven, Analynn, Zonya, Merda, Cassandra): `PrevQuestID` set to their faction's Homecoming quest (31917 Alliance / 31918 Horde). Requires completing the first-time chain first.
+
+**Faction gating fix**: The 5 Horde classic dailies (Dagra 31819, Analynn 31854, Zonya 31862, Merda 31872, Cassandra 31904) were originally gated behind Alliance quest 31917. Horde copies created at 33009-33013 with `PrevQuestID=31918`.
+
+## Trainer Provisioning
+
+51 unique pet battle tamers were identified by cross-referencing three data sources:
+1. `quest_objective WHERE type = 11` (WINPETBATTLEAGAINSTNPC)
+2. `battle_pet_trainer` (pet team assignments)
+3. `creature` spawns (world placement)
+
+| Metric | Count |
+|---|---|
+| Total unique tamers (quest_objective type=11) | 51 |
+| Pre-existing spawns (before this work) | 16 |
+| New creature spawns added | 37 |
+| Tamers with battle_pet_trainer data | 51 (Brok, Jeremy Feasel, Little Tommy added) |
+| Zoneless tamers (wrathion:73138) | 1 (no battle quest, legendary NPC) |
+
+**Spawn placement**: World tamers are placed +4 units east of the nearest innkeeper in their zone. Health = level × zone_multiplier (Classic ×30, Outland ×130, Northrend ×100, Cataclysm ×135).
+
+All changes in `sql/updates/world/2026_05_22_00_battle_pet_trainer_spawns.sql`.
 
 ## Fixes Applied
 
-1. `BattlePetSpawnMgr.cpp:413` — `erase(guid)` instead of `erase(replacementGUID)` — fixes duplicate GUID crash when trainer swaps pets
-2. `BattlePetSpawnMgr.cpp:89` — `break;` instead of `break;;` — syntax bug
-3. `PetBattle.cpp:375-379` — removed `else if (m_owner && !m_ready)` auto-pass block — fixes player never getting a turn (server was auto-submitting for player)
-4. `PetBattle.h:182` — removed orphaned `SetReady()` declaration
-5. `PetBattle.cpp:697-711` — `HandleRound()` auto-swap for trainer dead pets with `ignoreAlive=true` — client needs swap effect in same round as pet death
-6. `PetBattle.cpp:989` — only set `CATCH_OR_KILL` round result for wild pet battles (`PET_BATTLE_TYPE_PVE`). Trainer pet deaths send `NORMAL` round result.
-7. `PetBattle.cpp:226-239` — removed duplicate `PET_BATTLE_EFFECT_ACTIVE_PET` from `SetActivePet()`. `SwapActivePet()` already adds the effect.
-8. `PetBattle.cpp:725-730` — moved cooldown decrement from `TurnFinished()` to before `SendRoundResult()`. Cooldowns were sent one turn too high.
-9. `BattlePetAbilityEffect.cpp:111` — changed weather effect target from `PET_BATTLE_ABILITY_TARGET_HEAD` to `PET_BATTLE_ABILITY_TARGET_ALL`. Weather auras now apply to all 6 pets in the battle, so swapped-in pets already have the weather effect.
-10. `Player.cpp:17975-18016`, `Player.h:1772`, `PetBattle.cpp:570` — added `PetBattleCompleteQuest()` to handle `QUEST_OBJECTIVE_WINPETBATTLEAGAINSTNPC` (type 11) quest objectives. Trainer battle victory now correctly completes quests like "Zunta" (31818).
+| # | File | Fix |
+|---|---|---|
+| 1 | `BattlePetSpawnMgr.cpp` | `erase(guid)` instead of `erase(replacementGUID)` — duplicate GUID crash when trainer swaps pets |
+| 2 | `BattlePetSpawnMgr.cpp` | `break;;` → `break;` — syntax bug |
+| 3 | `PetBattle.cpp` | Removed `else if (m_owner && !m_ready)` auto-pass block — player never got a turn |
+| 4 | `PetBattle.h` | Removed orphaned `SetReady()` declaration |
+| 5 | `PetBattle.cpp` | `HandleRound()` auto-swap for trainer dead pets with `ignoreAlive=true` — client needs swap in same round as death |
+| 6 | `PetBattle.cpp` | CATCH_OR_KILL round result only for wild battles; trainer pet deaths send NORMAL |
+| 7 | `PetBattle.cpp` | Removed duplicate `PET_BATTLE_EFFECT_ACTIVE_PET` from `SetActivePet()` — `SwapActivePet()` already adds it |
+| 8 | `PetBattle.cpp` | Moved cooldown decrement from `TurnFinished()` to before `SendRoundResult()` — cooldowns were one turn too high |
+| 9 | `BattlePetAbilityEffect.cpp` | Weather effect target changed from `HEAD` to `ALL` — weather auras now apply to all 6 pets |
+| 10 | `Player.cpp/h`, `PetBattle.cpp` | Added `PetBattleCompleteQuest()` for type 11 objectives — trainer victory correctly completes pet battle quests |
+| 11 | `PetBattle.cpp` | Fixed `GetInputStatusFlags()` — dead-pet and swap-lock checks are now mutually exclusive, preventing conflicting `LOCK_PET_SWAP` + `SELECT_NEW_PET` flags from suppressing the swap prompt on player pet death |
+| DB | creature_queststarter/ender | Added first-time chain starters/enders for 19 quests; daily quest links for 13 trainers; 6 new quests (33009-33014) |
+| DB | creature | 37 new spawns for pet tamers; curhealth fix for 8 pre-existing spawns (1→correct value) |
+| DB | gossip_menu | Created menu_id=900001 (TextID=1), applied to 37 trainers with gossip_menu_id=0 |
+| DB | battle_pet_trainer | Added pet teams for Brok, Jeremy Feasel, Little Tommy Newcomer |
+| 12 | `BattlePetAbilityEffect.cpp` | `HandlePeriodicPositiveTrigger` (Effect 63): added `maxAllowed=1` to `AddAura` — prevents periodic buffs/HoTs from stacking infinitely |
+| 13 | `BattlePetAbilityEffect.cpp` | `HandleDamageToggleAura` (Effect 76): added `maxAllowed=1` to `AddAura` on first-apply; replaced `GetAura()` with a full loop to expire all matching auras on toggle — prevents toggle auras from stacking |
+| 14 | `BattlePetAbilityEffect.cpp` | `HandlePowerlessAura` (Effect 178): added `maxAllowed=1` to `AddAura` — prevents powerless-type debuffs from stacking |
+| 15 | `PetBattle.cpp` | `AddAura()`: moved `m_effects.push_back(effect)` after `if (flags) return;` — fixes client-server desync where client received phantom aura-apply for missed/blocked attacks |
 
 ## Current State
 
+- ✅ Database provisioning: all 51 pet battle tamers have spawns, quest links, and pet teams
+- ✅ Quest chain: first-time progression + daily quests for all zones/factions
+- ✅ Faction gating: Horde/Alliance duplicates for Classic dailies (33009-33013) and EK completion (33014)
 - ✅ Wild pet battles: working
 - ✅ Trainer pet battles: multi-pet rosters, pet death swaps, round flow all working
-- ✅ Pet death handling: symmetric between player and trainer
+- ✅ Pet death handling: symmetric between player and trainer; swap prompt correctly appears when player's pet dies
 - ✅ Trainer creature cleanup: unroots, un-pacifies, teleports to original position
 - ✅ XP/achievement credit on player victory
 - ✅ Weather effects: applied to all pets on both teams, persist through swaps

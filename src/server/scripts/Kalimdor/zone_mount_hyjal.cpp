@@ -200,7 +200,7 @@ class npc_garr_firesworn : public CreatureScript
         }
 };
 
-/* class npc_lycanthoth : public CreatureScript
+class npc_lycanthoth : public CreatureScript
 {
     public:
         npc_lycanthoth() : CreatureScript("npc_lycanthoth") { }
@@ -211,17 +211,22 @@ class npc_garr_firesworn : public CreatureScript
 
             void JustDied(Unit* killer) override
             {
+                if (!killer)
+                    return;
+
                 Unit* originalKiller = killer->GetCharmerOrOwnerOrSelf();
-                if (originalKiller && (originalKiller->GetTypeId() == TYPEID_PLAYER))
-                    killer->CastSpell(killer, (originalKiller->ToPlayer()->GetTeamId() == TEAM_HORDE ? 74077 : 74078), true);
-            } 
+                if (!originalKiller || originalKiller->GetTypeId() != TYPEID_PLAYER)
+                    return;
+
+                originalKiller->CastSpell(originalKiller, (originalKiller->ToPlayer()->GetTeamId() == TEAM_HORDE ? 74077 : 74078), true);
+            }
         };
 
         CreatureAI* GetAI(Creature* creature) const override
         {
             return new npc_lycanthothAI(creature);
         }
-}; */
+};
 
 class npc_marion_wormswing : public CreatureScript
 {
@@ -254,7 +259,7 @@ class npc_marion_wormswing : public CreatureScript
         }
 };
 
-/* class go_harpy_signal_fire : public GameObjectScript
+class go_harpy_signal_fire : public GameObjectScript
 {
     public:
         go_harpy_signal_fire() : GameObjectScript("go_harpy_signal_fire") { }
@@ -265,7 +270,7 @@ class npc_marion_wormswing : public CreatureScript
                 go->SummonCreature(41112, player->GetPositionX(), player->GetPositionY(), player->GetPositionZ(), player->GetOrientation(), TEMPSUMMON_TIMED_DESPAWN, 60000);
             return false;
         }
-}; */
+};
 
 enum TrampolineSpells
 {
@@ -867,6 +872,185 @@ class at_king_of_the_spider_hill : public AreaTriggerScript
         }
 };
 
+enum MagmaMonarch
+{
+    QUEST_MAGMA_MONARCH              = 25550,
+    NPC_KING_MOLTRON                 = 40998,
+    NPC_TORTOLLA_SUMMONED            = 41504,
+    ITEM_DRUMS_OF_TURTLE_GOD         = 55179,
+    SPELL_FLAME_STOMP                = 80600,
+    NPC_TORTOLLA_QUEST_GIVER         = 40078, // Commander Jarod Shadowsong
+};
+
+enum BearsUpThere
+{
+    QUEST_BEARS_UP_THERE             = 25462,
+    QUEST_THOSE_BEARS_UP_THERE       = 29161,
+    NPC_SOFT_TARGET_BEAR             = 40239,
+    NPC_HYJAL_BEAR_CUB               = 40240,
+    NPC_RESCUED_BEAR                 = 40284,
+    ITEM_HYJAL_BEAR_CUB              = 70140,
+    SPELL_CHUCK_A_BEAR               = 75139,
+};
+
+// #####
+// # item_drums_of_the_turtle_god
+// #####
+
+class item_drums_of_the_turtle_god : public ItemScript
+{
+    public:
+        item_drums_of_the_turtle_god() : ItemScript("item_drums_of_the_turtle_god") { }
+
+        bool OnUse(Player* player, Item* item, SpellCastTargets const& /*targets*/) override
+        {
+            if (player->GetQuestStatus(QUEST_MAGMA_MONARCH) != QUEST_STATUS_INCOMPLETE)
+            {
+                player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, item, NULL);
+                return true;
+            }
+
+            Creature* moltron = player->FindNearestCreature(NPC_KING_MOLTRON, 100.0f, true);
+            if (!moltron)
+            {
+                player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, item, NULL);
+                return true;
+            }
+
+            if (player->FindNearestCreature(NPC_TORTOLLA_SUMMONED, 100.0f, true))
+            {
+                player->SendEquipError(EQUIP_ERR_CLIENT_LOCKED_OUT, item, NULL);
+                return true;
+            }
+
+            Position spawnPos = moltron->GetPosition();
+            spawnPos.m_positionZ += 5.0f;
+            spawnPos.m_positionX += 10.0f;
+            if (Creature* tortolla = player->SummonCreature(NPC_TORTOLLA_SUMMONED, spawnPos, TEMPSUMMON_CORPSE_DESPAWN, 0))
+            {
+                tortolla->AI()->AttackStart(moltron);
+                tortolla->SetReactState(REACT_AGGRESSIVE);
+            }
+
+            return false;
+        }
+};
+
+// #####
+// # npc_tortolla_magma
+// #####
+
+class npc_tortolla_magma : public CreatureScript
+{
+    public:
+        npc_tortolla_magma() : CreatureScript("npc_tortolla_magma") { }
+
+        struct npc_tortolla_magmaAI : public ScriptedAI
+        {
+            npc_tortolla_magmaAI(Creature* creature) : ScriptedAI(creature) { }
+
+            void IsSummonedBy(Unit* summoner) override
+            {
+                if (Creature* moltron = me->FindNearestCreature(NPC_KING_MOLTRON, 100.0f, true))
+                {
+                    AttackStart(moltron);
+                    me->GetMotionMaster()->MoveChase(moltron);
+                }
+            }
+
+            void UpdateAI(uint32 diff) override
+            {
+                if (!UpdateVictim())
+                    return;
+
+                DoMeleeAttackIfReady();
+            }
+        };
+
+        CreatureAI* GetAI(Creature* creature) const override
+        {
+            return new npc_tortolla_magmaAI(creature);
+        }
+};
+
+// #####
+// # npc_king_moltron
+// #####
+
+class npc_king_moltron : public CreatureScript
+{
+    public:
+        npc_king_moltron() : CreatureScript("npc_king_moltron") { }
+
+        struct npc_king_moltronAI : public ScriptedAI
+        {
+            npc_king_moltronAI(Creature* creature) : ScriptedAI(creature) { }
+
+            void JustDied(Unit* /*killer*/) override
+            {
+                std::list<Player*> players;
+                Trinity::AnyPlayerInObjectRangeCheck check(me, 100.0f);
+                Trinity::PlayerListSearcher<Trinity::AnyPlayerInObjectRangeCheck> searcher(me, players, check);
+                me->VisitNearbyWorldObject(100.0f, searcher);
+
+                for (Player* player : players)
+                    if (player->GetQuestStatus(QUEST_MAGMA_MONARCH) == QUEST_STATUS_INCOMPLETE)
+                        player->KilledMonsterCredit(NPC_KING_MOLTRON, ObjectGuid::Empty);
+            }
+        };
+
+        CreatureAI* GetAI(Creature* creature) const override
+        {
+            return new npc_king_moltronAI(creature);
+        }
+};
+
+// #####
+// # spell_chuck_a_bear (75139)
+// #####
+
+class spell_chuck_a_bear : public SpellScriptLoader
+{
+    public:
+        spell_chuck_a_bear() : SpellScriptLoader("spell_chuck_a_bear") { }
+
+        class spell_chuck_a_bear_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_chuck_a_bear_SpellScript);
+
+            void HandleDummy(SpellEffIndex effIndex)
+            {
+                if (!GetCaster() || !GetHitUnit())
+                    return;
+
+                Player* caster = GetCaster()->ToPlayer();
+                if (!caster)
+                    return;
+
+                Unit* target = GetHitUnit();
+                if (target->GetEntry() != NPC_SOFT_TARGET_BEAR)
+                    return;
+
+                if (caster->GetQuestStatus(QUEST_BEARS_UP_THERE) != QUEST_STATUS_INCOMPLETE &&
+                    caster->GetQuestStatus(QUEST_THOSE_BEARS_UP_THERE) != QUEST_STATUS_INCOMPLETE)
+                    return;
+
+                caster->DestroyItemCount(ITEM_HYJAL_BEAR_CUB, 1, true);
+                caster->KilledMonsterCredit(NPC_RESCUED_BEAR, ObjectGuid::Empty);
+            }
+
+            void Register() override
+            {
+                OnEffectHitTarget += SpellEffectFn(spell_chuck_a_bear_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
+            }
+        };
+
+        SpellScript* GetSpellScript() const override
+        {
+            return new spell_chuck_a_bear_SpellScript();
+        }
+};
+
 uint32 const sethriasRoostSummonSpells[] = { 96544, 96545, 96546, 96547, 96564, 96584, 96585, 96586, 96587, 96588, 96589, 96590, 96595, 96596, 96597, 96598, 96599, 96600, 96601, 96603, 96604, 96605, 96606, 96607, 96608, 96610, 96611, 96612, 96622, 96623, 96624, 96625, 96626, 96627, 96628, 96629, 99021, 99022, 99023, 99024, 99027, 99028, 99030, 99032 };
 
 class spell_sethrias_roost_squad_aura : public SpellScriptLoader
@@ -1072,9 +1256,9 @@ void AddSC_mount_hyjal()
 {
     new npc_garr();
     new npc_garr_firesworn();
-    // new npc_lycanthoth();
+    new npc_lycanthoth();
     new npc_marion_wormswing();
-    // new go_harpy_signal_fire();
+    new go_harpy_signal_fire();
     new npc_soft_target();
     new npc_angry_little_squirrel();
     new npc_wings_of_aviana();
@@ -1091,4 +1275,10 @@ void AddSC_mount_hyjal()
     new spell_geddon_inferno();
     new aura_script<spell_twilight_firelance_equipped>("spell_twilight_firelance_equipped");
     new AreaTrigger_at_hyjal_alysra();
+
+    // New scripts
+    new item_drums_of_the_turtle_god();
+    new npc_tortolla_magma();
+    new npc_king_moltron();
+    new spell_chuck_a_bear();
 }

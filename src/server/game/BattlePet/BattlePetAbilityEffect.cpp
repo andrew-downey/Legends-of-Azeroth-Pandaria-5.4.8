@@ -561,7 +561,7 @@ void BattlePetAbilityEffect::HandleNegativeAura()
     // TODO: handle ChainFailure, CasterState, TargetState
 
     CalculateHit(m_effectEntry->Properties[1]);
-    m_petBattle->AddAura(m_caster, m_target, m_effectEntry->TriggerAbility, m_effectEntry->Id, m_effectEntry->Properties[2], m_flags, m_effectEntry->Properties[3]);
+    m_petBattle->AddAura(m_caster, m_target, m_effectEntry->TriggerAbility, m_effectEntry->Id, m_effectEntry->Properties[2], m_flags, 1);
 }
 
 // Effect 54: ChainFailure, Accuracy, Duration, MaxAllowed
@@ -571,7 +571,7 @@ void BattlePetAbilityEffect::HandlePeriodicTrigger()
         return;
 
     CalculateHit(m_effectEntry->Properties[1]);
-    m_petBattle->AddAura(m_caster, m_target, m_effectEntry->TriggerAbility, m_effectEntry->Id, m_effectEntry->Properties[2], m_flags, m_effectEntry->Properties[3]);
+    m_petBattle->AddAura(m_caster, m_target, m_effectEntry->TriggerAbility, m_effectEntry->Id, m_effectEntry->Properties[2], m_flags, 1);
 }
 
 // Effect 63: Unused, Accuracy, Duration

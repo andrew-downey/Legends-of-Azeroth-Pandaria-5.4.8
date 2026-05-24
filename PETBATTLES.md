@@ -178,6 +178,8 @@ All changes in `sql/updates/world/2026_05_22_00_battle_pet_trainer_spawns.sql`.
 | 13 | `BattlePetAbilityEffect.cpp` | `HandleDamageToggleAura` (Effect 76): added `maxAllowed=1` to `AddAura` on first-apply; replaced `GetAura()` with a full loop to expire all matching auras on toggle — prevents toggle auras from stacking |
 | 14 | `BattlePetAbilityEffect.cpp` | `HandlePowerlessAura` (Effect 178): added `maxAllowed=1` to `AddAura` — prevents powerless-type debuffs from stacking |
 | 15 | `PetBattle.cpp` | `AddAura()`: moved `m_effects.push_back(effect)` after `if (flags) return;` — fixes client-server desync where client received phantom aura-apply for missed/blocked attacks |
+| 16 | `BattlePetAbilityEffect.cpp` | `HandlePeriodicTrigger` (Effect 54): changed `maxAllowed` from DBC `Properties[3]` to hardcoded `1` — prevents periodic DoTs (like poison) from stacking |
+| 17 | `BattlePetAbilityEffect.cpp` | `HandleNegativeAura` (Effect 50): changed `maxAllowed` from DBC `Properties[3]` to hardcoded `1` — prevents debuff auras from stacking |
 
 ## Current State
 

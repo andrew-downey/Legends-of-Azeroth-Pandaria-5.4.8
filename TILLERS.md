@@ -27,12 +27,16 @@ Sunsong Ranch is a personal farming system in Valley of the Four Winds. Each pla
 ### Implemented
 - [x] 16 plot positions at Sunsong Ranch
 - [x] 12 crop types with seed/harvest item mappings
-- [x] 4 plot states: UNTILLED → TILLED → GROWING → RIPE
-- [x] 3 crop conditions: HEALTHY, PARCHED, PESTS, WEEDS
+- [x] 6 plot states: UNTILLED → TILLED → GROWING → RIPE, STUBBORN, OCCUPIED
+- [x] 10 crop conditions: HEALTHY, PARCHED, PESTS, WEEDS, ALLURING, WIGGLING, SMOTHERED, WILD, RUNTY, TANGLED
 - [x] 2 special crop types: PLUMP (+3 yield), BURSTING (instant harvest)
-- [x] Gossip-based plot interaction (till, plant, harvest, water, spray, pull weeds)
+- [x] Gossip-based plot interaction (till, plant, harvest, water, spray, pull weeds, shoo birds, dig virmen, clear smothered, wrestle wild, pull runty, untangle vines, pull stubborn soil, expose occupied virmen)
+- [x] Post-harvest soil states: STUBBORN (15% chance), OCCUPIED (10% chance)
+- [x] Tiller gift rare drop from harvest (5% chance, item 79246)
+- [x] Tillers faction reputation gain on harvest (50 rep per crop)
+- [x] Seed drop chance on harvest (50%, 1-3 seeds)
 - [x] Character DB persistence for plot state and farm upgrades
-- [x] In-memory cache with thread-safe `FarmDataManager`
+- [x] In-memory cache with thread-safe `FarmDataManager` (`std::map<ObjectGuid, ...>`)
 - [x] Player login/logout load/save lifecycle
 - [x] Zone-based spawn/despawn (Valley of the Four Winds zone 5805)
 - [x] Bonus crop 10-day rotation schedule
@@ -40,31 +44,40 @@ Sunsong Ranch is a personal farming system in Valley of the Four Winds. Each pla
 - [x] Votes mask for Tillers union progression
 - [x] Water spell script (removes parched aura 115824)
 
-### Known Bugs
-- [CRITICAL] **Deadlock in `SaveToDB`** — `SaveToDB` locks `_mutex` then calls `SavePlot` which locks `_mutex` again. Will deadlock on every logout/save.
-- [CRITICAL] **`unordered_map<ObjectGuid>` missing hash** — `ObjectGuid` has no `std::hash` specialization. Compile failure or undefined behavior.
-- [BUG] `snprintf` with 64-byte buffers for dynamic crop names — potential truncation.
-- [BUG] Deprecated `CAST_AI` macro usage instead of direct cast.
-- [BUG] Redundant growth timer check in both `SpawnFarm` and `OnGossipHello`.
+### Code Quality
+- [x] Deadlock fix: `SavePlot_NoLock` (internal, no lock) / `SavePlot` (public, acquires lock)
+- [x] `unordered_map<ObjectGuid>` → `std::map<ObjectGrid>` (no hash available)
+- [x] `snprintf` → `std::string` concatenation (no buffer overflow risk)
+- [x] `CAST_AI` → `static_cast<npc_farm_plotAI*>(creature->AI())`
+- [x] All enums → `enum class` (type-safe: `FarmPlotState`, `CropType`, `FarmCondition`, `SpecialCrop`)
+- [x] `#define` → `constexpr` constants
+- [x] `[[nodiscard]]` on helper functions
+- [x] `UpdateGrowthTimers()` centralized (eliminates duplicate growth logic)
+- [x] `FACTION_TILLERS` (1074), `HARVEST_REP_GAIN` (50) constants
+- [x] SCALLION seed ID fix (79104 → 79103; 79104 is Rusty Watering Can)
 
 ### Missing (vs Retail)
 
 **Crop Interactions (Mini-Games):**
-- [ ] Alluring crops — bird attacks, click soil to summon and kill
-- [ ] Infested crops — bug spray required (beyond gossip)
-- [ ] Wiggling crops — virmen under crop, click to summon and kill
-- [ ] Smothered crops — pull weed mini-game
-- [ ] Wild crops — wrestle mini-game
-- [ ] Runty crops — jump to pull up
-- [ ] Tangled crops — run to untangle vine
-- [ ] Stubborn soil post-harvest — pull ability
-- [ ] Occupied soil post-harvest — virmen in soil, click to expose and kill
+- [x] Alluring crops — gossip option to shoo birds
+- [x] Wiggling crops — gossip option to dig out virmen
+- [x] Smothered crops — gossip option to clear weeds
+- [x] Wild crops — gossip option to wrestle
+- [x] Runty crops — gossip option to pull up
+- [x] Tangled crops — gossip option to untangle vines
+- [x] Stubborn soil post-harvest — gossip option to pull loose
+- [x] Occupied soil post-harvest — gossip option to expose virmen
+- [ ] Alluring crops — actual bird summon + combat mini-game
+- [ ] Wiggling crops — actual virmen summon + combat mini-game
+- [ ] Wild crops — actual wrestle mini-game (animation/ability)
+- [ ] Runty crops — actual jump mini-game
+- [ ] Tangled crops — actual run mini-game
 
 **Reputation & Progression:**
-- [ ] Tillers faction (ID 1074) reputation gain on harvest (50 rep at level 90)
+- [x] Tillers faction (ID 1074) reputation gain on harvest (50 rep at level 90)
+- [x] Tiller gift rare drops from harvest
 - [ ] Friendship system with 10 individual Tiller NPCs
 - [ ] Gift delivery via Andi daily quests
-- [ ] Tiller gift rare drops from harvest
 
 **Farm Upgrades:**
 - [ ] 15-minute in-game timer for each farm expansion (Gai Lan, Fish Fellreed, Haohan/Thunder)
@@ -91,37 +104,42 @@ Sunsong Ranch is a personal farming system in Valley of the Four Winds. Each pla
 
 ## Planned State
 
-### Phase 1 — Critical Bugs & Code Quality
-- Fix deadlock: `SavePlot` should not re-acquire mutex when called from `SaveToDB`
-- Fix hash: switch `unordered_map` to `std::map` or provide `ObjectGuid` hash
-- Replace `snprintf` with `std::string` / `std::format`
-- Replace `CAST_AI` with direct `creature->AI()` cast
-- Centralize growth timer check into single `UpdateGrowth` function
-- Convert enums to `enum class` for type safety
-- Add `[[nodiscard]]` to helpers, improve const-correctness
-- Use `constexpr` for static data instead of `#define`
+### Phase 1 — Critical Bugs & Code Quality (COMPLETE)
+- [x] Fix deadlock: `SavePlot_NoLock` split
+- [x] Fix hash: `unordered_map` → `std::map`
+- [x] Replace `snprintf` with `std::string`
+- [x] Replace `CAST_AI` with direct cast
+- [x] Centralize growth timer: `UpdateGrowthTimers()`
+- [x] Convert enums to `enum class`
+- [x] Add `[[nodiscard]]` to helpers
+- [x] Use `constexpr` for static data
+- [x] Reputation on harvest
+- [x] SCALLION seed ID fix
 
-### Phase 2 — Crop Interactions & Reputation
-- Implement all 9 crop interaction types as mini-game conditions
-- Add post-harvest soil states (Stubborn, Occupied)
-- Add Tillers faction reputation gain on harvest
-- Add seed seed-drop chance on harvest (50%, 1-3 seeds)
-- Add Tiller gift rare drop chance
+### Phase 2 — Crop Interactions & Reputation (IN PROGRESS)
+- [x] Add 6 new crop conditions to enum and roll table
+- [x] Add STUBBORN, OCCUPIED post-harvest soil states
+- [x] Add gossip options for all new conditions and soil states
+- [x] Add gossip select handlers for all new interactions
+- [x] Add post-harvest soil state chance logic
+- [x] Add Tiller gift rare drop
+- [x] Fix seed drop `CropHarvestMap.end()` → `CropSeedMap.end()` bug
+- [ ] Replace gossip interactions with actual mini-game mechanics (combat, animations, abilities)
 
 ### Phase 3 — Farm Upgrades & Tools
-- Implement 15-minute in-game timer system for farm expansions
-- Add Gai Lan (weeds→8 plots), Fish Fellreed (wagon→12), Haohan/Thunder (boulder→16)
-- Implement tool upgrades: sprinkler, pest repellers, earth-slasher plow
+- [ ] Implement 15-minute in-game timer system for farm expansions
+- [ ] Add Gai Lan (weeds→8 plots), Fish Fellreed (wagon→12), Haohan/Thunder (boulder→16)
+- [ ] Implement tool upgrades: sprinkler, pest repellers, earth-slasher plow
 
 ### Phase 4 — Quests, Dailies, Friendship
-- Daily quest system with Yoon, Andi, visiting farmers
-- Friendship reputation system with 10 Tiller NPCs
-- Vote questlines tracking
-- Profession seeds and decorative seeds
+- [ ] Daily quest system with Yoon, Andi, visiting farmers
+- [ ] Friendship reputation system with 10 Tiller NPCs
+- [ ] Vote questlines tracking
+- [ ] Profession seeds and decorative seeds
 
 ### Phase 5 — Documentation & Verification
-- Final TILLERS.md update reflecting completed state
-- Build verification
+- [ ] Final TILLERS.md update reflecting completed state
+- [ ] Build verification
 
 ## Progress Log
 
@@ -130,3 +148,4 @@ Sunsong Ranch is a personal farming system in Valley of the Four Winds. Each pla
 | 2026-05-24 | Initial | Base farm system created: plot states, gossip, DB persistence |
 | 2026-05-25 | Planning | Analysis complete, TILLERS.md created with full roadmap |
 | 2026-05-25 | Phase 1 | Fixed deadlock (SavePlot_NoLock split), unordered_map→std::map, snprintf→std::string, CAST_AI→direct cast, enum class conversion, constexpr constants, [[nodiscard]] helpers, UpdateGrowthTimers centralization, reputation on harvest, SCALLION seed ID fix |
+| 2026-05-25 | Phase 2 | Added 6 new crop conditions (ALLURING, WIGGLING, SMOTHERED, WILD, RUNTY, TANGLED), 2 post-harvest soil states (STUBBORN, OCCUPIED), gossip options + handlers for all, post-harvest soil state chance logic, Tiller gift drop, fixed seed drop bug |

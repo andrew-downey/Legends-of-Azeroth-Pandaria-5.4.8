@@ -30,6 +30,8 @@
 #include "Group.h"
 #include "GameObject.h"
 #include "GameObjectAI.h"
+#include "ReputationMgr.h"
+#include "DBCStores.h"
 
 #include "tillers_farm.h"
 #include <mutex>
@@ -173,33 +175,12 @@ FarmCondition RollFarmCondition()
     return FarmCondition::TANGLED;
 }
 
-  SpecialCrop RollSpecialCrop()
+ SpecialCrop RollSpecialCrop()
    {
        uint32 roll = urand(1, 100);
        if (roll <= 88) return SpecialCrop::NONE;
        if (roll <= 98) return SpecialCrop::PLUMP;
        return SpecialCrop::BURSTING;
-   }
-
-   void UpdateGrowthTimers(Player* player, std::map<uint8, FarmPlotData>& plots)
-   {
-       uint32 now = uint32(sWorld->GetGameTime());
-       for (auto& pair : plots)
-       {
-           auto& plot = pair.second;
-           if (plot.state == FarmPlotState::GROWING && plot.plantedAt > 0)
-           {
-               uint32 elapsed = now - plot.plantedAt;
-               if (elapsed >= FARM_GROWTH_TIME)
-               {
-                   plot.condition = RollFarmCondition();
-                   plot.special = RollSpecialCrop();
-                   plot.state = FarmPlotState::RIPE;
-                   if (player)
-                       sFarmData->SavePlot(player->GetGUID(), plot);
-               }
-           }
-       }
    }
 
 // ============================================================================
@@ -243,7 +224,7 @@ public:
         QueryResult result = CharacterDatabase.PQuery(
             "SELECT unlocked_plots, has_irrigation, has_antipest, has_plow, votes_mask "
             "FROM character_tillers_farm_data WHERE guid = %u",
-            GUID_LOPART(guid));
+            guid.GetCounter());
 
         if (result)
         {
@@ -259,7 +240,7 @@ public:
             CharacterDatabase.PExecute(
                 "INSERT INTO character_tillers_farm_data (guid, unlocked_plots, has_irrigation, has_antipest, has_plow, votes_mask) "
                 "VALUES (%u, 4, 0, 0, 0, 0)",
-                GUID_LOPART(guid));
+                guid.GetCounter());
             data.unlockedPlots = 4;
         }
 
@@ -267,7 +248,7 @@ public:
         result = CharacterDatabase.PQuery(
             "SELECT plot_id, state, crop, planted_at, `condition`, is_special "
             "FROM character_tillers_farm WHERE guid = %u ORDER BY plot_id",
-            GUID_LOPART(guid));
+            guid.GetCounter());
 
         if (result)
         {
@@ -297,7 +278,7 @@ public:
                 CharacterDatabase.PExecute(
                     "INSERT INTO character_tillers_farm (guid, plot_id, state, crop, planted_at, `condition`, is_special) "
                     "VALUES (%u, %u, 0, 0, 0, 0, 0)",
-                    GUID_LOPART(guid), i);
+                    guid.GetCounter(), i);
             }
         }
 
@@ -311,7 +292,7 @@ public:
             "UPDATE character_tillers_farm SET state = %u, crop = %u, planted_at = %u, `condition` = %u, is_special = %u "
             "WHERE guid = %u AND plot_id = %u",
             plot.state, plot.crop, plot.plantedAt, plot.condition, plot.special,
-            GUID_LOPART(guid), plot.plotId);
+            guid.GetCounter(), plot.plotId);
     }
 
     // Save a single plot's state to DB (thread-safe public API)
@@ -338,7 +319,7 @@ public:
             data.upgrades.hasAntipest ? 1 : 0,
             data.upgrades.hasPlow ? 1 : 0,
             data.votesMask,
-            GUID_LOPART(guid));
+            guid.GetCounter());
 
         for (auto& pair : data.plots)
             SavePlot_NoLock(guid, pair.second);
@@ -379,6 +360,27 @@ private:
 };
 
 #define sFarmData FarmDataManager::instance()
+
+void UpdateGrowthTimers(Player* player, std::map<uint8, FarmPlotData>& plots)
+{
+    uint32 now = uint32(sWorld->GetGameTime());
+    for (auto& pair : plots)
+    {
+        auto& plot = pair.second;
+        if (plot.state == FarmPlotState::GROWING && plot.plantedAt > 0)
+        {
+            uint32 elapsed = now - plot.plantedAt;
+            if (elapsed >= FARM_GROWTH_TIME)
+            {
+                plot.condition = RollFarmCondition();
+                plot.special = RollSpecialCrop();
+                plot.state = FarmPlotState::RIPE;
+                if (player)
+                    sFarmData->SavePlot(player->GetGUID(), plot);
+            }
+        }
+    }
+}
 
 // ============================================================================
 // PlayerScript - Handle farm spawn/despawn on zone change
@@ -460,7 +462,7 @@ private:
                 creature->SetDisplayId(displayId);
                 creature->ToTempSummon()->SetPrivateObjectOwner(player->GetGUID());
                 creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-                creature->SetImmuneToAll(true);
+                creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC | UNIT_FLAG_IMMUNE_TO_NPC);
                 creature->AI()->SetData(0, i);
 
                 plot.creatureGuid = creature->GetGUID();
@@ -576,7 +578,7 @@ public:
                     if (player->HasItemCount(seedPair.second, 1))
                     {
                         std::string msg = std::string("Plant ") + GetCropName(seedPair.first) + " seed.";
-                        AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, msg, GOSSIP_SENDER_MAIN, 10 + seedPair.first);
+                        AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, msg, GOSSIP_SENDER_MAIN, 10 + uint32(seedPair.first));
                         hasAnySeed = true;
                         gossipCount++;
                     }
@@ -759,7 +761,7 @@ public:
                     sFarmData->SavePlot(player->GetGUID(), plot);
                     creature->SetDisplayId(GetFarmPlotDisplayId(plot.state, plot.crop, plot.condition, plot.special));
 
-                    player->ModifyReputation(FACTION_TILLERS, HARVEST_REP_GAIN, true);
+                    player->GetReputationMgr().ModifyReputation(sFactionStore.LookupEntry(FACTION_TILLERS), HARVEST_REP_GAIN);
                     player->GetSession()->SendNotification(("You harvest " + std::to_string(yield) + " " + cropName + "!").c_str());
                 }
                 break;
@@ -891,7 +893,7 @@ public:
                 if (action >= 10)
                 {
                     uint8 cropType = uint8(action - 10);
-                    if (cropType > 0 && cropType < CropType::MAX && plot.state == FarmPlotState::TILLED)
+                    if (cropType > 0 && cropType < uint8(CropType::MAX) && plot.state == FarmPlotState::TILLED)
                     {
                         CropType crop = CropType(cropType);
                         auto seedIt = CropSeedMap.find(crop);

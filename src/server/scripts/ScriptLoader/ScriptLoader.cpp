@@ -1021,6 +1021,7 @@ void AddSC_vale_of_eternal_blossoms();
 void AddSC_valley_of_the_four_winds();
 void AddSC_dread_wastes();
 void AddSC_timeless_isle();
+void AddSC_tillers_farm();
 void AddSC_wandering_island_east();
 void AddSC_wandering_island_north();
 void AddSC_wandering_island_south();
@@ -2083,6 +2084,7 @@ void AddPandariaScripts()
     AddSC_valley_of_the_four_winds();
     AddSC_dread_wastes();
     AddSC_timeless_isle();
+    AddSC_tillers_farm();
     AddSC_wandering_island_east();
     AddSC_wandering_island_north();
     AddSC_wandering_island_south();

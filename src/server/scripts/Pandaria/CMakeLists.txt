@@ -37,6 +37,11 @@ set(scripts_STAT_SRCS
   Pandaria/TimelessIsle/zone_timeless_isle.cpp
   Pandaria/TillersFarm/tillers_farm.h
   Pandaria/TillersFarm/tillers_farm.cpp
+  Pandaria/TillersFarm/npc_farmer_yoon.cpp
+  Pandaria/TillersFarm/npc_tillers_friendship.cpp
+  Pandaria/TillersFarm/go_tillers_shrine.cpp
+  Pandaria/TillersFarm/tillers_dailies.cpp
+  Pandaria/TillersFarm/npc_tillers_vote.cpp
   Pandaria/GateOfTheSettingSun/boss_commander_rimok.cpp
   Pandaria/GateOfTheSettingSun/boss_raigonn.cpp
   Pandaria/GateOfTheSettingSun/boss_saboteur_kiptilak.cpp

@@ -39,7 +39,7 @@ case "$1" in
       echo "Error: build directory '$BUILD_DIR' does not exist. Run 'configure' first." >&2
       exit 1
     fi
-    cmake --build "$BUILD_DIR" --target authserver worldserver -j"$(nproc)"
+    cmake --build "$BUILD_DIR" --target authserver worldserver -j8
     ;;
 
   install)

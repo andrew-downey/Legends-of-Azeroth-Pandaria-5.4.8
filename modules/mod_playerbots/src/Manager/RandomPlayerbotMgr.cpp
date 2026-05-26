@@ -95,6 +95,13 @@ void RandomPlayerbotMgr::UpdateAIInternal(uint32 elapsed, bool /*minimal*/)
     if (!sPlayerbotAIConfig->randomBotAutologin || !sPlayerbotAIConfig->enabled)
         return;
 
+    if (_players.empty())
+    {
+        SetEventValue(0, "bot_count", 0, 1);
+        LogoutBotsWithoutRealPlayerInGroup();
+        return;
+    }
+
     uint32 maxAllowedBotCount = GetEventValue(0, "bot_count");
     if (!maxAllowedBotCount || (maxAllowedBotCount < sPlayerbotAIConfig->minRandomBots ||
         maxAllowedBotCount > sPlayerbotAIConfig->maxRandomBots))
@@ -803,6 +810,9 @@ void RandomPlayerbotMgr::OnPlayerLogout(Player* player)
     std::vector<Player*>::iterator i = std::find(_players.begin(), _players.end(), player);
     if (i != _players.end())
         _players.erase(i);
+
+    if (_players.empty())
+        LogoutBotsWithoutRealPlayerInGroup();
 }
 
 void RandomPlayerbotMgr::OnBotLoginInternal(Player* const bot)

@@ -32,6 +32,7 @@
 #include "GameObjectAI.h"
 #include "ReputationMgr.h"
 #include "DBCStores.h"
+#include "ObjectAccessor.h"
 
 #include "tillers_farm.h"
 #include <mutex>
@@ -76,6 +77,17 @@ std::map<CropType, uint32> const CropSeedMap =
     { CropType::WITCHBERRY,         79328 },
     { CropType::PINK_TURNIP,        79329 },
     { CropType::JADE_SQUASH,        79330 },
+    // Profession seeds (Revered+ reputation)
+    { CropType::SNAKEROOT,          85215 },
+    { CropType::ENIGMA,             85216 },
+    { CropType::MAGEBULB,           85217 },
+    { CropType::WINDSHEAR_CACTUS,   89197 },
+    { CropType::RAPTORLEAF,         89202 },
+    { CropType::SONGBELL,           89233 },
+    // Blossom tree saplings
+    { CropType::AUTUMN_BLOSSOM,     85267 },
+    { CropType::SPRING_BLOSSOM,     85268 },
+    { CropType::WINTER_BLOSSOM,     85269 },
 };
 
 std::map<CropType, uint32> const CropHarvestMap =
@@ -92,6 +104,27 @@ std::map<CropType, uint32> const CropHarvestMap =
     { CropType::WITCHBERRY,         74856 },
     { CropType::PINK_TURNIP,        74857 },
     { CropType::JADE_SQUASH,        74858 },
+    // Profession seed harvest products
+    { CropType::SNAKEROOT,          72092 },   // Ghost Iron Ore
+    { CropType::ENIGMA,             0 },       // Special: random herb handled in harvest code
+    { CropType::MAGEBULB,           74249 },   // Spirit Dust
+    { CropType::WINDSHEAR_CACTUS,   72988 },   // Windwool Cloth
+    { CropType::RAPTORLEAF,         72162 },   // Sha-Touched Leather
+    { CropType::SONGBELL,           89112 },   // Mote of Harmony
+    // Blossom tree saplings (mature tree versions)
+    { CropType::AUTUMN_BLOSSOM,     85264 },   // Autumn Blossom Tree
+    { CropType::SPRING_BLOSSOM,     85265 },   // Spring Blossom Tree
+    { CropType::WINTER_BLOSSOM,     85266 },   // Winter Blossom Tree
+};
+
+// Pandaren herbs for Enigma seed harvest (random selection)
+uint32 const EnigmaHerbs[5] =
+{
+    72234, // Green Tea Leaf
+    72235, // Silkweed
+    72237, // Rain Poppy
+    72238, // Golden Lotus
+    79010, // Snow Lily
 };
 
 CropType const BonusCropSchedule[10] =
@@ -106,6 +139,24 @@ CropType const BonusCropSchedule[10] =
     CropType::MOGU_PUMPKIN,
     CropType::PINK_TURNIP,
     CropType::RED_BLOSSOM_LEEK,
+};
+
+uint32 const DarkSoilTreasures[5] =
+{
+    ITEM_RUBY_SHARD,    // 79264
+    ITEM_BLUE_FEATHER,  // 79265
+    ITEM_JADE_CAT,      // 79266
+    ITEM_LOVELY_APPLE,  // 79267
+    ITEM_MARSH_LILY,    // 79268
+};
+
+char const* DarkSoilTreasureNames[5] =
+{
+    "Ruby Shard",
+    "Blue Feather",
+    "Jade Cat",
+    "Lovely Apple",
+    "Marsh Lily"
 };
 
 // ============================================================================
@@ -156,6 +207,15 @@ char const* GetCropName(CropType crop)
         case CropType::WITCHBERRY:         return "Witchberry";
         case CropType::PINK_TURNIP:        return "Pink Turnip";
         case CropType::JADE_SQUASH:        return "Jade Squash";
+        case CropType::SNAKEROOT:          return "Snakeroot";
+        case CropType::ENIGMA:             return "Enigma";
+        case CropType::MAGEBULB:           return "Magebulb";
+        case CropType::WINDSHEAR_CACTUS:   return "Windshear Cactus";
+        case CropType::RAPTORLEAF:         return "Raptorleaf";
+        case CropType::SONGBELL:           return "Songbell";
+        case CropType::AUTUMN_BLOSSOM:     return "Autumn Blossom";
+        case CropType::SPRING_BLOSSOM:     return "Spring Blossom";
+        case CropType::WINTER_BLOSSOM:     return "Winter Blossom";
         default:                      return "Unknown";
     }
 }
@@ -184,21 +244,6 @@ FarmCondition RollFarmCondition()
    }
 
 // ============================================================================
-// Per-Player Cached Farm Data
-// ============================================================================
-
-struct PlayerFarmCache
-{
-    uint8                             unlockedPlots;
-    FarmToolUpgrades                  upgrades;
-    uint8                             votesMask;
-    std::map<uint8, FarmPlotData>     plots;
-
-    PlayerFarmCache()
-        : unlockedPlots(4), votesMask(0) {}
-};
-
-// ============================================================================
 // Farm Data Manager (in-memory cache, thread-safe)
 // ============================================================================
 
@@ -212,37 +257,31 @@ public:
     }
 
     // Load data from DB for a player
+    // Returns true if the player already has a farm, false otherwise
     bool LoadFromDB(Player* player)
     {
         ObjectGuid guid = player->GetGUID();
         std::lock_guard<std::mutex> lock(_mutex);
 
-        _farmData[guid] = PlayerFarmCache();
-        auto& data = _farmData[guid];
-
         // Load farm_data
         QueryResult result = CharacterDatabase.PQuery(
-            "SELECT unlocked_plots, has_irrigation, has_antipest, has_plow, votes_mask "
+            "SELECT unlocked_plots, has_irrigation, has_antipest, has_plow, votes_mask, expansion_timer_end "
             "FROM character_tillers_farm_data WHERE guid = %u",
             guid.GetCounter());
 
-        if (result)
-        {
-            Field* fields = result->Fetch();
-            data.unlockedPlots        = fields[0].GetUInt8();
-            data.upgrades.hasIrrigation = fields[1].GetBool();
-            data.upgrades.hasAntipest   = fields[2].GetBool();
-            data.upgrades.hasPlow       = fields[3].GetBool();
-            data.votesMask            = fields[4].GetUInt8();
-        }
-        else
-        {
-            CharacterDatabase.PExecute(
-                "INSERT INTO character_tillers_farm_data (guid, unlocked_plots, has_irrigation, has_antipest, has_plow, votes_mask) "
-                "VALUES (%u, 4, 0, 0, 0, 0)",
-                guid.GetCounter());
-            data.unlockedPlots = 4;
-        }
+        if (!result)
+            return false;
+
+        _farmData[guid] = PlayerFarmCache();
+        auto& data = _farmData[guid];
+
+        Field* fields = result->Fetch();
+        data.unlockedPlots          = fields[0].GetUInt8();
+        data.upgrades.hasIrrigation = fields[1].GetBool();
+        data.upgrades.hasAntipest   = fields[2].GetBool();
+        data.upgrades.hasPlow       = fields[3].GetBool();
+        data.votesMask              = fields[4].GetUInt8();
+        data.expansionTimerEnd      = fields[5].GetUInt32();
 
         // Load plot data
         result = CharacterDatabase.PQuery(
@@ -285,6 +324,37 @@ public:
         return true;
     }
 
+    // Create a new farm for a player (must have completed the tutorial gate quest)
+    void CreateFarm(Player* player)
+    {
+        ObjectGuid guid = player->GetGUID();
+        std::lock_guard<std::mutex> lock(_mutex);
+
+        if (_farmData.find(guid) != _farmData.end())
+            return;
+
+        CharacterDatabase.PExecute(
+            "INSERT INTO character_tillers_farm_data (guid, unlocked_plots, has_irrigation, has_antipest, has_plow, votes_mask) "
+            "VALUES (%u, 4, 0, 0, 0, 0)",
+            guid.GetCounter());
+
+        for (uint8 i = 0; i < 4; ++i)
+            CharacterDatabase.PExecute(
+                "INSERT INTO character_tillers_farm (guid, plot_id, state, crop, planted_at, `condition`, is_special) "
+                "VALUES (%u, %u, 0, 0, 0, 0, 0)",
+                guid.GetCounter(), i);
+
+        _farmData[guid] = PlayerFarmCache();
+        auto& data = _farmData[guid];
+        data.unlockedPlots = 4;
+        for (uint8 i = 0; i < 4; ++i)
+        {
+            FarmPlotData defaultPlot;
+            defaultPlot.plotId = i;
+            data.plots[i] = defaultPlot;
+        }
+    }
+
     // Save a single plot's state to DB (caller must hold lock)
     void SavePlot_NoLock(ObjectGuid guid, FarmPlotData const& plot)
     {
@@ -312,13 +382,14 @@ public:
 
         auto& data = it->second;
         CharacterDatabase.PExecute(
-            "UPDATE character_tillers_farm_data SET unlocked_plots = %u, has_irrigation = %u, has_antipest = %u, has_plow = %u, votes_mask = %u "
+            "UPDATE character_tillers_farm_data SET unlocked_plots = %u, has_irrigation = %u, has_antipest = %u, has_plow = %u, votes_mask = %u, expansion_timer_end = %u "
             "WHERE guid = %u",
             data.unlockedPlots,
             data.upgrades.hasIrrigation ? 1 : 0,
             data.upgrades.hasAntipest ? 1 : 0,
             data.upgrades.hasPlow ? 1 : 0,
             data.votesMask,
+            data.expansionTimerEnd,
             guid.GetCounter());
 
         for (auto& pair : data.plots)
@@ -361,6 +432,16 @@ private:
 
 #define sFarmData FarmDataManager::instance()
 
+PlayerFarmCache* GetPlayerFarmData(ObjectGuid guid)
+{
+    return sFarmData->GetData(guid);
+}
+
+void CreatePlayerFarm(Player* player)
+{
+    sFarmData->CreateFarm(player);
+}
+
 void UpdateGrowthTimers(Player* player, std::map<uint8, FarmPlotData>& plots)
 {
     uint32 now = uint32(sWorld->GetGameTime());
@@ -383,6 +464,57 @@ void UpdateGrowthTimers(Player* player, std::map<uint8, FarmPlotData>& plots)
 }
 
 // ============================================================================
+// Farm Expansion Timer Check
+// Called from PlayerScript zone/login updates and Farmer Yoon's gossip
+// ============================================================================
+
+bool CheckFarmExpiration(Player* player)
+{
+    if (!player)
+        return false;
+
+    PlayerFarmCache* data = sFarmData->GetData(player->GetGUID());
+    if (!data)
+        return false;
+
+    if (data->expansionTimerEnd == 0)
+        return false;
+
+    uint32 now = uint32(sWorld->GetGameTime());
+    if (now < data->expansionTimerEnd)
+        return false;
+
+    uint8 currentPlots = data->unlockedPlots;
+
+    uint8 nextTier = 0;
+    if (currentPlots < 8)
+        nextTier = 8;
+    else if (currentPlots < 12)
+        nextTier = 12;
+    else if (currentPlots < 16)
+        nextTier = 16;
+
+    if (nextTier == 0)
+    {
+        data->expansionTimerEnd = 0;
+        CharacterDatabase.PExecute(
+            "UPDATE character_tillers_farm_data SET expansion_timer_end = 0 WHERE guid = %u",
+            player->GetGUID().GetCounter());
+        return false;
+    }
+
+    data->unlockedPlots = nextTier;
+    data->expansionTimerEnd = 0;
+    CharacterDatabase.PExecute(
+        "UPDATE character_tillers_farm_data SET unlocked_plots = %u, expansion_timer_end = 0 WHERE guid = %u",
+        nextTier, player->GetGUID().GetCounter());
+
+    player->GetSession()->SendNotification("Farmer Yoon finishes his work! You now have %u farm plots.", nextTier);
+
+    return true;
+}
+
+// ============================================================================
 // PlayerScript - Handle farm spawn/despawn on zone change
 // ============================================================================
 
@@ -396,7 +528,12 @@ public:
         if (!player)
             return;
 
-        sFarmData->LoadFromDB(player);
+        bool hasFarm = sFarmData->LoadFromDB(player);
+        if (!hasFarm && player->GetQuestRewardStatus(QUEST_TUTORIAL_GATE))
+            sFarmData->CreateFarm(player);
+
+        sFriendship->LoadFromDB(player);
+        CheckFarmExpiration(player);
     }
 
     void OnLogout(Player* player) override
@@ -407,6 +544,8 @@ public:
         DespawnFarm(player);
         sFarmData->SaveToDB(player->GetGUID());
         sFarmData->Unload(player->GetGUID());
+        sFriendship->SaveToDB(player->GetGUID());
+        sFriendship->Unload(player->GetGUID());
     }
 
     void OnUpdateZone(Player* player, uint32 newZone, uint32 newArea) override
@@ -415,7 +554,10 @@ public:
             return;
 
         if (newZone == VALLEY_OF_FOUR_WINDS_ZONE)
+        {
+            CheckFarmExpiration(player);
             SpawnFarm(player);
+        }
         else
             DespawnFarm(player);
     }
@@ -440,14 +582,41 @@ private:
         PlayerFarmCache* data = sFarmData->GetData(player->GetGUID());
         if (!data)
         {
-            sFarmData->LoadFromDB(player);
-            data = sFarmData->GetData(player->GetGUID());
+            if (sFarmData->LoadFromDB(player))
+                data = sFarmData->GetData(player->GetGUID());
+            if (!data && player->GetQuestRewardStatus(QUEST_TUTORIAL_GATE))
+            {
+                sFarmData->CreateFarm(player);
+                data = sFarmData->GetData(player->GetGUID());
+            }
             if (!data)
                 return;
         }
 
         // Process growth timers
         UpdateGrowthTimers(player, data->plots);
+
+        // Auto-clear conditions based on upgrade flags
+        if (data->upgrades.hasIrrigation || data->upgrades.hasAntipest)
+        {
+            for (auto& pair : data->plots)
+            {
+                auto& plot = pair.second;
+                if (plot.state != FarmPlotState::GROWING)
+                    continue;
+
+                if (data->upgrades.hasIrrigation && plot.condition == FarmCondition::PARCHED)
+                {
+                    plot.condition = FarmCondition::HEALTHY;
+                    sFarmData->SavePlot(player->GetGUID(), plot);
+                }
+                else if (data->upgrades.hasAntipest && plot.condition == FarmCondition::PESTS)
+                {
+                    plot.condition = FarmCondition::HEALTHY;
+                    sFarmData->SavePlot(player->GetGUID(), plot);
+                }
+            }
+        }
 
         // Spawn creatures
         std::vector<ObjectGuid> spawned;
@@ -503,11 +672,25 @@ class npc_farm_plot : public CreatureScript
 public:
     npc_farm_plot() : CreatureScript("npc_farm_plot") { }
 
+    enum InteractionType : uint8
+    {
+        INTERACTION_NONE = 0,
+        INTERACTION_CHANNEL,
+        INTERACTION_SUMMON,
+        INTERACTION_TIMER,
+        INTERACTION_MOVE_AWAY
+    };
+
     struct npc_farm_plotAI : public ScriptedAI
     {
-        npc_farm_plotAI(Creature* creature) : ScriptedAI(creature) { }
+        npc_farm_plotAI(Creature* creature) : ScriptedAI(creature), plotId(0), _interactionType(INTERACTION_NONE), _interactionTimer(0), _interactionAction(0) { }
 
         uint8 plotId;
+        InteractionType _interactionType;
+        uint32 _interactionTimer;
+        ObjectGuid _interactionPlayerGuid;
+        uint32 _interactionAction;
+        ObjectGuid _summonedNpcGuid;
 
         void SetData(uint32 /*type*/, uint32 data) override
         {
@@ -517,6 +700,175 @@ public:
         void Reset() override
         {
             plotId = 0;
+            _interactionType = INTERACTION_NONE;
+            _interactionTimer = 0;
+            _interactionPlayerGuid.Clear();
+            _interactionAction = 0;
+            _summonedNpcGuid.Clear();
+        }
+
+        bool StartChannel(Player* player, uint32 actionId, uint32 durationMs)
+        {
+            _interactionType = INTERACTION_CHANNEL;
+            _interactionTimer = durationMs;
+            _interactionPlayerGuid = player->GetGUID();
+            _interactionAction = actionId;
+            return true;
+        }
+
+        bool StartSummon(Player* player, uint32 actionId, uint32 npcEntry)
+        {
+            if (TempSummon* summon = me->SummonCreature(npcEntry, me->GetPosition(), TEMPSUMMON_CORPSE_TIMED_DESPAWN, 30000))
+            {
+                _interactionType = INTERACTION_SUMMON;
+                _interactionAction = actionId;
+                _interactionPlayerGuid = player->GetGUID();
+                _summonedNpcGuid = summon->GetGUID();
+                summon->SetPrivateObjectOwner(player->GetGUID());
+                Creature* npc = summon;
+                npc->SetReactState(REACT_AGGRESSIVE);
+                npc->AI()->AttackStart(player);
+                return true;
+            }
+            return false;
+        }
+
+        bool StartTimer(Player* player, uint32 actionId, uint32 durationMs)
+        {
+            _interactionType = INTERACTION_TIMER;
+            _interactionTimer = durationMs;
+            _interactionPlayerGuid = player->GetGUID();
+            _interactionAction = actionId;
+            return true;
+        }
+
+        bool StartMoveAway(Player* player, uint32 actionId)
+        {
+            _interactionType = INTERACTION_MOVE_AWAY;
+            _interactionPlayerGuid = player->GetGUID();
+            _interactionAction = actionId;
+            return true;
+        }
+
+        void FinishInteraction(Player* player, PlayerFarmCache* data)
+        {
+            _interactionType = INTERACTION_NONE;
+            _interactionTimer = 0;
+            _summonedNpcGuid.Clear();
+
+            if (!player || !data)
+                return;
+
+            auto it = data->plots.find(plotId);
+            if (it == data->plots.end())
+                return;
+
+            FarmPlotData& plot = it->second;
+
+            switch (_interactionAction)
+            {
+                case 5:
+                    if (plot.condition == FarmCondition::ALLURING)
+                    {
+                        plot.condition = FarmCondition::HEALTHY;
+                        player->GetSession()->SendNotification("You shoo the birds away.");
+                    }
+                    break;
+                case 6:
+                    if (plot.condition == FarmCondition::WIGGLING)
+                    {
+                        plot.condition = FarmCondition::HEALTHY;
+                        player->GetSession()->SendNotification("You dig out the wiggling virmen.");
+                    }
+                    break;
+                case 7:
+                    if (plot.condition == FarmCondition::SMOTHERED)
+                    {
+                        plot.condition = FarmCondition::HEALTHY;
+                        player->GetSession()->SendNotification("You clear the smothering weeds.");
+                    }
+                    break;
+                case 8:
+                    if (plot.condition == FarmCondition::WILD)
+                    {
+                        plot.condition = FarmCondition::HEALTHY;
+                        player->GetSession()->SendNotification("You wrestle the wild crop back in place.");
+                    }
+                    break;
+                case 9:
+                    if (plot.condition == FarmCondition::RUNTY)
+                    {
+                        plot.condition = FarmCondition::HEALTHY;
+                        player->GetSession()->SendNotification("You pull up the runty crop.");
+                    }
+                    break;
+                case 10:
+                    if (plot.condition == FarmCondition::TANGLED)
+                    {
+                        plot.condition = FarmCondition::HEALTHY;
+                        player->GetSession()->SendNotification("You untangle the vines from the crop.");
+                    }
+                    break;
+                case 11:
+                    if (plot.state == FarmPlotState::STUBBORN)
+                    {
+                        plot.state = FarmPlotState::UNTILLED;
+                        player->GetSession()->SendNotification("You pull the stubborn soil loose.");
+                    }
+                    break;
+                case 12:
+                    if (plot.state == FarmPlotState::OCCUPIED)
+                    {
+                        plot.state = FarmPlotState::UNTILLED;
+                        player->GetSession()->SendNotification("You clear the occupied plot.");
+                    }
+                    break;
+            }
+
+            sFarmData->SavePlot(player->GetGUID(), plot);
+            me->SetDisplayId(GetFarmPlotDisplayId(plot.state, plot.crop, plot.condition, plot.special));
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            if (_interactionType == INTERACTION_NONE)
+                return;
+
+            Player* player = ObjectAccessor::GetPlayer(*me, _interactionPlayerGuid);
+            if (!player)
+            {
+                Reset();
+                return;
+            }
+
+            PlayerFarmCache* data = sFarmData->GetData(player->GetGUID());
+            if (!data)
+            {
+                Reset();
+                return;
+            }
+
+            switch (_interactionType)
+            {
+                case INTERACTION_CHANNEL:
+                case INTERACTION_TIMER:
+                    if (_interactionTimer <= diff)
+                        FinishInteraction(player, data);
+                    else
+                        _interactionTimer -= diff;
+                    break;
+                case INTERACTION_SUMMON:
+                {
+                    Creature* summon = ObjectAccessor::GetCreature(*me, _summonedNpcGuid);
+                    if (!summon || !summon->IsAlive())
+                        FinishInteraction(player, data);
+                    break;
+                }
+                case INTERACTION_MOVE_AWAY:
+                    if (me->GetDistance2d(player) >= 15.0f)
+                        FinishInteraction(player, data);
+                    break;
+            }
         }
     };
 
@@ -554,6 +906,12 @@ public:
             return true;
         }
 
+        if (ai->_interactionType != INTERACTION_NONE)
+        {
+            player->GetSession()->SendNotification("You are already occupied with a farm task.");
+            return true;
+        }
+
         uint32 now = uint32(sWorld->GetGameTime());
 
         // Update growth for this plot before showing gossip
@@ -572,13 +930,21 @@ public:
             }
             case FarmPlotState::TILLED:
             {
+                // Profession seeds require Revered reputation
+                FactionEntry const* tillersFaction = sFactionStore.LookupEntry(FACTION_TILLERS);
+                uint32 tillersRep = tillersFaction ? player->GetReputationMgr().GetReputation(tillersFaction) : 0;
+
                 bool hasAnySeed = false;
                 for (auto& seedPair : CropSeedMap)
                 {
+                    // Gate profession seeds (type >= SNAKEROOT) by Revered reputation
+                    if (uint32(seedPair.first) >= uint32(CropType::SNAKEROOT) && tillersRep < 21000)
+                        continue;
+
                     if (player->HasItemCount(seedPair.second, 1))
                     {
                         std::string msg = std::string("Plant ") + GetCropName(seedPair.first) + " seed.";
-                        AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, msg, GOSSIP_SENDER_MAIN, 10 + uint32(seedPair.first));
+                        AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, msg, GOSSIP_SENDER_MAIN, 100 + uint32(seedPair.first));
                         hasAnySeed = true;
                         gossipCount++;
                     }
@@ -639,6 +1005,9 @@ public:
                 {
                     AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Untangle the vines from the crop.", GOSSIP_SENDER_MAIN, 10);
                 }
+
+                if (player->HasItemCount(ITEM_DENTED_SHOVEL, 1))
+                    AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Remove crop with Dented Shovel.", GOSSIP_SENDER_MAIN, 13);
 
                 gossipCount++;
                 break;
@@ -727,11 +1096,19 @@ public:
 
                     char const* cropName = GetCropName(plot.crop);
 
-                    auto harvestIt = CropHarvestMap.find(plot.crop);
-                    if (harvestIt != CropHarvestMap.end())
-                        player->AddItem(harvestIt->second, yield);
+                    if (plot.crop == CropType::ENIGMA)
+                    {
+                        uint32 herbId = EnigmaHerbs[urand(0, 4)];
+                        player->AddItem(herbId, yield);
+                    }
+                    else
+                    {
+                        auto harvestIt = CropHarvestMap.find(plot.crop);
+                        if (harvestIt != CropHarvestMap.end())
+                            player->AddItem(harvestIt->second, yield);
+                    }
 
-           if (urand(1, 100) <= 50)
+            if (urand(1, 100) <= 50)
                     {
                         auto seedIt = CropSeedMap.find(plot.crop);
                         if (seedIt != CropSeedMap.end())
@@ -799,100 +1176,124 @@ public:
                 }
                 break;
             }
-            case 5: // Shoo birds (alluring)
+            case 5: // Shoo birds (alluring) → summon Plainshawk
             {
                 if (plot.condition == FarmCondition::ALLURING)
                 {
-                    plot.condition = FarmCondition::HEALTHY;
-                    sFarmData->SavePlot(player->GetGUID(), plot);
-                    creature->SetDisplayId(GetFarmPlotDisplayId(plot.state, plot.crop, plot.condition, plot.special));
-                    player->GetSession()->SendNotification("You shoo the birds away.");
+                    if (ai && ai->StartSummon(player, 5, NPC_PLAINSHAWK))
+                        player->GetSession()->SendNotification("You disturb the birds from the crop...");
+                    else
+                    {
+                        plot.condition = FarmCondition::HEALTHY;
+                        sFarmData->SavePlot(player->GetGUID(), plot);
+                        creature->SetDisplayId(GetFarmPlotDisplayId(plot.state, plot.crop, plot.condition, plot.special));
+                        player->GetSession()->SendNotification("You shoo the birds away.");
+                    }
                 }
                 break;
             }
-            case 6: // Dig out virmen (wiggling)
+            case 6: // Dig out virmen (wiggling) → summon Virmen
             {
                 if (plot.condition == FarmCondition::WIGGLING)
                 {
-                    plot.condition = FarmCondition::HEALTHY;
-                    sFarmData->SavePlot(player->GetGUID(), plot);
-                    creature->SetDisplayId(GetFarmPlotDisplayId(plot.state, plot.crop, plot.condition, plot.special));
-                    player->GetSession()->SendNotification("You dig out the wiggling virmen.");
+                    if (ai && ai->StartSummon(player, 6, NPC_VIRMEN))
+                        player->GetSession()->SendNotification("You dig at the wiggling mound...");
+                    else
+                    {
+                        plot.condition = FarmCondition::HEALTHY;
+                        sFarmData->SavePlot(player->GetGUID(), plot);
+                        creature->SetDisplayId(GetFarmPlotDisplayId(plot.state, plot.crop, plot.condition, plot.special));
+                        player->GetSession()->SendNotification("You dig out the wiggling virmen.");
+                    }
                 }
                 break;
             }
-            case 7: // Clear smothered weeds
+            case 7: // Clear smothered weeds → channel 3s
             {
                 if (plot.condition == FarmCondition::SMOTHERED)
                 {
-                    plot.condition = FarmCondition::HEALTHY;
-                    sFarmData->SavePlot(player->GetGUID(), plot);
-                    creature->SetDisplayId(GetFarmPlotDisplayId(plot.state, plot.crop, plot.condition, plot.special));
-                    player->GetSession()->SendNotification("You clear the smothering weeds.");
+                    if (ai)
+                        ai->StartChannel(player, 7, 3000);
+                    player->GetSession()->SendNotification("You start clearing the smothering weeds...");
                 }
                 break;
             }
-            case 8: // Wrestle wild crop
+            case 8: // Wrestle wild crop → channel 4s
             {
                 if (plot.condition == FarmCondition::WILD)
                 {
-                    plot.condition = FarmCondition::HEALTHY;
-                    sFarmData->SavePlot(player->GetGUID(), plot);
-                    creature->SetDisplayId(GetFarmPlotDisplayId(plot.state, plot.crop, plot.condition, plot.special));
-                    player->GetSession()->SendNotification("You wrestle the wild crop back in place.");
+                    if (ai)
+                        ai->StartChannel(player, 8, 4000);
+                    player->GetSession()->SendNotification("You start wrestling the wild crop...");
                 }
                 break;
             }
-            case 9: // Pull up runty crop
+            case 9: // Pull up runty crop → timer 1s
             {
                 if (plot.condition == FarmCondition::RUNTY)
                 {
-                    plot.condition = FarmCondition::HEALTHY;
-                    sFarmData->SavePlot(player->GetGUID(), plot);
-                    creature->SetDisplayId(GetFarmPlotDisplayId(plot.state, plot.crop, plot.condition, plot.special));
-                    player->GetSession()->SendNotification("You pull up the runty crop.");
+                    if (ai)
+                        ai->StartTimer(player, 9, 1000);
+                    player->GetSession()->SendNotification("You start pulling the runty crop...");
                 }
                 break;
             }
-            case 10: // Untangle vines
+            case 10: // Untangle vines → move 15y away
             {
                 if (plot.condition == FarmCondition::TANGLED)
                 {
-                    plot.condition = FarmCondition::HEALTHY;
-                    sFarmData->SavePlot(player->GetGUID(), plot);
-                    creature->SetDisplayId(GetFarmPlotDisplayId(plot.state, plot.crop, plot.condition, plot.special));
-                    player->GetSession()->SendNotification("You untangle the vines from the crop.");
+                    if (ai)
+                        ai->StartMoveAway(player, 10);
+                    player->GetSession()->SendNotification("Move away from the plot to untangle the vines!");
                 }
                 break;
             }
-            case 11: // Pull stubborn soil
+            case 11: // Pull stubborn soil → channel 3s
             {
                 if (plot.state == FarmPlotState::STUBBORN)
                 {
-                    plot.state = FarmPlotState::UNTILLED;
-                    sFarmData->SavePlot(player->GetGUID(), plot);
-                    creature->SetDisplayId(GetFarmPlotDisplayId(plot.state, plot.crop, plot.condition, plot.special));
-                    player->GetSession()->SendNotification("You pull the stubborn soil loose.");
+                    if (ai)
+                        ai->StartChannel(player, 11, 3000);
+                    player->GetSession()->SendNotification("You start pulling the stubborn soil...");
                 }
                 break;
             }
-            case 12: // Expose virmen (occupied)
+            case 12: // Expose virmen (occupied) → summon Virmen
             {
                 if (plot.state == FarmPlotState::OCCUPIED)
                 {
-                    plot.state = FarmPlotState::UNTILLED;
-                    sFarmData->SavePlot(player->GetGUID(), plot);
-                    creature->SetDisplayId(GetFarmPlotDisplayId(plot.state, plot.crop, plot.condition, plot.special));
-                    player->GetSession()->SendNotification("You expose the virmen occupying this plot.");
+                    if (ai && ai->StartSummon(player, 12, NPC_VIRMEN))
+                        player->GetSession()->SendNotification("You disturb the virmen in the soil...");
+                    else
+                    {
+                        plot.state = FarmPlotState::UNTILLED;
+                        sFarmData->SavePlot(player->GetGUID(), plot);
+                        creature->SetDisplayId(GetFarmPlotDisplayId(plot.state, plot.crop, plot.condition, plot.special));
+                        player->GetSession()->SendNotification("You expose the virmen occupying this plot.");
+                    }
                 }
                 break;
             }
-            default: // Plant seed (action = 10 + CropType)
+            case 13: // Remove crop with Dented Shovel
             {
-                // action must be >= 10 for this to be a valid seed-plant action
-                if (action >= 10)
+                if (plot.state == FarmPlotState::GROWING && player->HasItemCount(ITEM_DENTED_SHOVEL, 1))
                 {
-                    uint8 cropType = uint8(action - 10);
+                    plot.state = FarmPlotState::UNTILLED;
+                    plot.crop = CropType::NONE;
+                    plot.plantedAt = 0;
+                    plot.condition = FarmCondition::HEALTHY;
+                    plot.special = SpecialCrop::NONE;
+                    sFarmData->SavePlot(player->GetGUID(), plot);
+                    creature->SetDisplayId(GetFarmPlotDisplayId(plot.state, plot.crop, plot.condition, plot.special));
+                    player->GetSession()->SendNotification("You remove the crop with your Dented Shovel.");
+                }
+                break;
+            }
+            default: // Plant seed (action = 100 + CropType)
+            {
+                if (action >= 100)
+                {
+                    uint8 cropType = uint8(action - 100);
                     if (cropType > 0 && cropType < uint8(CropType::MAX) && plot.state == FarmPlotState::TILLED)
                     {
                         CropType crop = CropType(cropType);
@@ -957,9 +1358,150 @@ public:
 // Registration
 // ============================================================================
 
+// ============================================================================
+// FriendshipManager Implementation
+// ============================================================================
+
+bool FriendshipManager::LoadFromDB(Player* player)
+{
+    ObjectGuid guid = player->GetGUID();
+    std::lock_guard<std::mutex> lock(_mutex);
+
+    QueryResult result = CharacterDatabase.PQuery(
+        "SELECT npc_entry, standing, daily_food_time, daily_gift_time "
+        "FROM character_tillers_friendship WHERE guid = %u",
+        guid.GetCounter());
+
+    if (result)
+    {
+        do
+        {
+            Field* fields = result->Fetch();
+            uint32 npcEntry = fields[0].GetUInt32();
+            _friendships[guid][npcEntry] = FriendshipEntry();
+            _friendships[guid][npcEntry].standing = fields[1].GetInt32();
+            _friendships[guid][npcEntry].lastDailyFoodTime = fields[2].GetUInt32();
+            _friendships[guid][npcEntry].lastDailyGiftTime = fields[3].GetUInt32();
+        } while (result->NextRow());
+    }
+
+    return true;
+}
+
+void FriendshipManager::SaveToDB(ObjectGuid guid)
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+    auto it = _friendships.find(guid);
+    if (it == _friendships.end())
+        return;
+
+    for (auto& pair : it->second)
+    {
+        CharacterDatabase.PExecute(
+            "INSERT INTO character_tillers_friendship (guid, npc_entry, standing, daily_food_time, daily_gift_time) "
+            "VALUES (%u, %u, %d, %u, %u) "
+            "ON DUPLICATE KEY UPDATE standing = %d, daily_food_time = %u, daily_gift_time = %u",
+            guid.GetCounter(), pair.first,
+            pair.second.standing, pair.second.lastDailyFoodTime, pair.second.lastDailyGiftTime,
+            pair.second.standing, pair.second.lastDailyFoodTime, pair.second.lastDailyGiftTime);
+    }
+}
+
+void FriendshipManager::Unload(ObjectGuid guid)
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+    _friendships.erase(guid);
+}
+
+FriendshipEntry* FriendshipManager::GetFriendship(ObjectGuid playerGuid, uint32 npcEntry)
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+    auto pit = _friendships.find(playerGuid);
+    if (pit == _friendships.end())
+        return nullptr;
+    auto nit = pit->second.find(npcEntry);
+    if (nit == pit->second.end())
+        return nullptr;
+    return &nit->second;
+}
+
+void FriendshipManager::ModifyStanding(ObjectGuid playerGuid, uint32 npcEntry, int32 amount)
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+    auto& entry = _friendships[playerGuid][npcEntry];
+    entry.standing += amount;
+    if (entry.standing < 0)
+        entry.standing = 0;
+}
+
+bool FriendshipManager::UpdateDailyFoodTimer(ObjectGuid playerGuid, uint32 npcEntry)
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+    auto& entry = _friendships[playerGuid][npcEntry];
+    uint32 now = uint32(sWorld->GetGameTime());
+    if (now - entry.lastDailyFoodTime < FRIENDSHIP_DAILY_RESET_INTERVAL)
+        return false;
+    entry.lastDailyFoodTime = now;
+    return true;
+}
+
+bool FriendshipManager::UpdateDailyGiftTimer(ObjectGuid playerGuid, uint32 npcEntry)
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+    auto& entry = _friendships[playerGuid][npcEntry];
+    uint32 now = uint32(sWorld->GetGameTime());
+    if (now - entry.lastDailyGiftTime < FRIENDSHIP_DAILY_RESET_INTERVAL)
+        return false;
+    entry.lastDailyGiftTime = now;
+    return true;
+}
+
+// ============================================================================
+// Dark Soil GameObject Script
+// ============================================================================
+
+class go_dark_soil : public GameObjectScript
+{
+public:
+    go_dark_soil() : GameObjectScript("go_dark_soil") { }
+
+    bool OnGossipHello(Player* player, GameObject* go) override
+    {
+        AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, "Dig in the dark soil...", GOSSIP_SENDER_MAIN, 1);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Leave.", GOSSIP_SENDER_MAIN, 0);
+        SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, go->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, GameObject* go, uint32 /*sender*/, uint32 action) override
+    {
+        CloseGossipMenuFor(player);
+
+        if (action == 0)
+            return true;
+
+        if (action == 1)
+        {
+            uint32 treasureIdx = urand(0, 4);
+            uint32 itemId = DarkSoilTreasures[treasureIdx];
+
+            if (player->AddItem(itemId, 1))
+                player->GetSession()->SendNotification("You dig in the dark soil and find a %s!", DarkSoilTreasureNames[treasureIdx]);
+            else
+                player->GetSession()->SendNotification("Your bags are full! You cannot carry the %s.", DarkSoilTreasureNames[treasureIdx]);
+
+            go->Delete();
+            return true;
+        }
+
+        return OnGossipHello(player, go);
+    }
+};
+
 void AddSC_tillers_farm()
 {
     new player_tillers_farm();
     new npc_farm_plot();
     new spell_tillers_water();
+    new go_dark_soil();
 }

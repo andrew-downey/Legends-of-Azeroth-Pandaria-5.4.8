@@ -44,6 +44,7 @@ public:
     void HandleBotPackets(WorldSession* session);
 
     void LogoutAllBots();
+    void LogoutBotsWithoutRealPlayerInGroup();
     void OnBotLogin(Player* const bot);
 
     std::vector<std::string> HandlePlayerbotCommand(char const* args, Player* master = nullptr);

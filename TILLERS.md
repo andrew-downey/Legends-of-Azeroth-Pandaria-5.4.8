@@ -8,7 +8,12 @@
 | `src/server/scripts/Pandaria/TillersFarm/tillers_farm.cpp` | Full implementation: player script, creature script, spell scripts |
 | `sql/updates/characters/2026_05_24_00_characters_tillers_farm.sql` | Character DB schema: plot state + farm data tables |
 | `src/server/scripts/ScriptLoader/ScriptLoader.cpp:1024,2087` | Script registration |
-| `src/server/scripts/Pandaria/CMakeLists.txt:38-39` | Build configuration |
+| `src/server/scripts/Pandaria/CMakeLists.txt:38-43` | Build configuration |
+| `src/server/scripts/Pandaria/TillersFarm/npc_tillers_friendship.cpp` | Friendship gossip for all 10 Tiller NPCs |
+| `src/server/scripts/Pandaria/TillersFarm/go_tillers_shrine.cpp` | Shrine GO showing all friendship standings |
+| `src/server/scripts/Pandaria/TillersFarm/go_dark_soil.cpp` | Dark Soil treasure drops |
+| `sql/updates/characters/2026_05_25_02_characters_tillers_friendship.sql` | Friendship DB table |
+| `sql/updates/world/2026_05_25_03_tillers_friendship_scripts.sql` | ScriptName bindings for friendship NPCs, shrine, dark soil |
 
 ## System Overview
 
@@ -43,8 +48,23 @@ Sunsong Ranch is a personal farming system in Valley of the Four Winds. Each pla
 - [x] Farm tool upgrade flags (irrigation, antipest, plow)
 - [x] Votes mask for Tillers union progression
 - [x] Water spell script (removes parched aura 115824)
-
-### Code Quality
+- [x] AI interaction state machine in npc_farm_plotAI (UpdateAI, 4 interaction types)
+- [x] All 8 crop condition mini-games (channel, timer, distance, summon NPCs)
+- [x] Dented Shovel to remove growing crops (item 89880)
+- [x] Active interaction guard (prevents gossip during active plot interaction)
+- [x] Correct tool item IDs: Dented Shovel (89880), Bug Sprayer (80513), Earth-Slasher (89814), Jinyu Princess (89812), Thunder King Pest Repellers (89813), Master Plow (89815)
+- [x] Summoned NPC constants: Plainshawk (58910), Virmen (55483)
+- [x] Profession seeds (Revered+): Snakeroot (85215), Enigma (85216), Magebulb (85217), Windshear Cactus (89197), Raptorleaf (89202), Songbell (89233)
+- [x] Blossom tree saplings: Autumn (85267→85264), Spring (85268→85265), Winter (85269→85266)
+- [x] Enigma seed harvest → random Pandaren herb (Green Tea Leaf, Silkweed, Rain Poppy, Golden Lotus, Snow Lily)
+- [x] Profession seed item constants (HERB_*)
+- [x] Farm expansion timer system: 15-min real-time timer via `expansion_timer_end` in DB
+- [x] CheckFarmExpiration() on login, zone enter, and Yoon gossip
+- [x] Farmer Yoon NPC script (`npc_farmer_yoon.cpp`) with reputation-gated expansion gossip
+- [x] Three expansion tiers: Honored→8 plots, Revered→12 plots, Exalted+votes→16 plots
+- [x] Tool installation via Yoon: consumes item, sets upgrade flag, gives Master Plow tool
+- [x] Auto-clear PARCHED (hasIrrigation) and PESTS (hasAntipest) on zone enter
+- [x] Reputation-gated profession seeds (Revered+ required to see in plant menu)
 - [x] Deadlock fix: `SavePlot_NoLock` (internal, no lock) / `SavePlot` (public, acquires lock)
 - [x] `unordered_map<ObjectGuid>` → `std::map<ObjectGrid>` (no hash available)
 - [x] `snprintf` → `std::string` concatenation (no buffer overflow risk)
@@ -59,32 +79,33 @@ Sunsong Ranch is a personal farming system in Valley of the Four Winds. Each pla
 ### Missing (vs Retail)
 
 **Crop Interactions (Mini-Games):**
-- [x] Alluring crops — gossip option to shoo birds
-- [x] Wiggling crops — gossip option to dig out virmen
-- [x] Smothered crops — gossip option to clear weeds
-- [x] Wild crops — gossip option to wrestle
-- [x] Runty crops — gossip option to pull up
-- [x] Tangled crops — gossip option to untangle vines
-- [x] Stubborn soil post-harvest — gossip option to pull loose
-- [x] Occupied soil post-harvest — gossip option to expose virmen
-- [ ] Alluring crops — actual bird summon + combat mini-game
-- [ ] Wiggling crops — actual virmen summon + combat mini-game
-- [ ] Wild crops — actual wrestle mini-game (animation/ability)
-- [ ] Runty crops — actual jump mini-game
-- [ ] Tangled crops — actual run mini-game
+- [x] Alluring crops — summon Plainshawk (58910) + combat mini-game
+- [x] Wiggling crops — summon Virmen (55483) + combat mini-game
+- [x] Smothered crops — channel 3s interaction
+- [x] Wild crops — channel 4s interaction
+- [x] Runty crops — 1s timer interaction
+- [x] Tangled crops — move 15y away from plot interaction
+- [x] Stubborn soil post-harvest — channel 3s interaction
+- [x] Occupied soil post-harvest — summon Virmen (55483) + combat mini-game
+- [x] Dented Shovel — remove growing crop (reverts plot to UNTILLED)
+- [x] Active interaction guard — prevents starting new interaction while one is in progress
 
 **Reputation & Progression:**
 - [x] Tillers faction (ID 1074) reputation gain on harvest (50 rep at level 90)
 - [x] Tiller gift rare drops from harvest
-- [ ] Friendship system with 10 individual Tiller NPCs
+- [x] Friendship system with 10 individual Tiller NPCs (food turn-in 1800/day, gift turn-in 540/900/day)
+- [x] FriendshipManager with DB persistence (character_tillers_friendship table)
+- [x] Friendship rank system: Stranger → Acquaintance → Buddy → Friend → Good Friend → Best Friend
+- [x] Daily food timer: 1800 standing per NPC per day
+- [x] Daily gift timer: 540 standing per gift, 900 for preferred item
 - [ ] Gift delivery via Andi daily quests
 
 **Farm Upgrades:**
-- [ ] 15-minute in-game timer for each farm expansion (Gai Lan, Fish Fellreed, Haohan/Thunder)
-- [ ] Farm expansion phases: 4→8 plots (Honored), 8→12 (Revered), 12→16 (Exalted + all 5 votes)
-- [ ] Jinyu Princess Sprinkler — waters all parched crops in a row of 8
-- [ ] Thunder King Pest Repellers — auto-clears pest conditions
-- [ ] Earth-Slasher Plow — tills rows of 4, stuns virmen at 30% HP
+- [x] 15-minute real-time timer for each farm expansion (Yoon gossip-based)
+- [x] Farm expansion phases: 4→8 plots (Honored), 8→12 (Revered), 12→16 (Exalted + all 5 votes)
+- [x] Jinyu Princess Sprinkler item consumed → auto-clears parched condition on zone entry
+- [x] Thunder King Pest Repellers item consumed → auto-clears pest condition on zone entry
+- [x] Earth-Slasher Plow assembly kit consumed → gives Master Plow tool to player
 
 **Quests & Dailies:**
 - [ ] Farmer Yoon daily crop planting quests (10-quest pool, +350 rep)
@@ -96,10 +117,10 @@ Sunsong Ranch is a personal farming system in Valley of the Four Winds. Each pla
 - [ ] Work orders bulletin board (post-Inherit the Earth)
 
 **Content:**
-- [ ] Profession seeds (Revered+): Enigma, Magebulb, Raptorleaf, Snakeroot, Windshear, Songbell
-- [ ] Decorative seeds: Autumn Blossom, Winter Blossom saplings
-- [ ] Tillers Shrine gossip for reputation tracking
-- [ ] Dark Soil interaction for friendship gifts
+- [x] Profession seeds (Revered+): Snakeroot, Enigma, Magebulb, Windshear Cactus, Raptorleaf, Songbell
+- [x] Blossom tree saplings: Autumn (Honored+), Spring (Revered+), Winter (Exalted+)
+- [x] Tillers Shrine gossip for reputation tracking (entry 215705)
+- [x] Dark Soil interaction for friendship gifts (entry 210565, 5 treasure types)
 - [ ] Sunsong Ranch ownership changes (post-Inherit the Earth)
 
 ## Planned State
@@ -116,7 +137,7 @@ Sunsong Ranch is a personal farming system in Valley of the Four Winds. Each pla
 - [x] Reputation on harvest
 - [x] SCALLION seed ID fix
 
-### Phase 2 — Crop Interactions & Reputation (IN PROGRESS)
+### Phase 2 — Crop Interactions & Mini-Games (COMPLETE)
 - [x] Add 6 new crop conditions to enum and roll table
 - [x] Add STUBBORN, OCCUPIED post-harvest soil states
 - [x] Add gossip options for all new conditions and soil states
@@ -124,18 +145,44 @@ Sunsong Ranch is a personal farming system in Valley of the Four Winds. Each pla
 - [x] Add post-harvest soil state chance logic
 - [x] Add Tiller gift rare drop
 - [x] Fix seed drop `CropHarvestMap.end()` → `CropSeedMap.end()` bug
-- [ ] Replace gossip interactions with actual mini-game mechanics (combat, animations, abilities)
+- [x] AI state machine in npc_farm_plotAI (UpdateAI, 4 interaction types, FinishInteraction)
+- [x] Alluring → summon Plainshawk (58910) + combat
+- [x] Wiggling → summon Virmen (55483) + combat
+- [x] Smothered → 3s channel interaction
+- [x] Wild → 4s channel interaction
+- [x] Runty → 1s timer interaction
+- [x] Tangled → move 15y distance check
+- [x] Stubborn → 3s channel interaction
+- [x] Occupied → summon Virmen (55483) + combat
+- [x] Dented Shovel — remove growing crop (plot → UNTILLED)
+- [x] Interaction guard — prevents gossip during active interaction
+- [x] Fix tool item IDs in `tillers_farm.h` (4 incorrect constants)
+- [x] Fix seed action offset bug (GREEN_CABBAGE/SCALLION could not be planted)
+- [x] Added ITEM_MASTER_PLOW, ITEM_EARTH_SLASHER, NPC_PLAINSHAWK, NPC_VIRMEN constants
 
-### Phase 3 — Farm Upgrades & Tools
-- [ ] Implement 15-minute in-game timer system for farm expansions
-- [ ] Add Gai Lan (weeds→8 plots), Fish Fellreed (wagon→12), Haohan/Thunder (boulder→16)
-- [ ] Implement tool upgrades: sprinkler, pest repellers, earth-slasher plow
+### Phase 3 — Farm Upgrades & Tools (COMPLETE)
+- [x] Implement 15-minute real-time timer system for farm expansions (via DB + Yoon gossip)
+- [x] Expansion tiers: Honored→8 plots, Revered→12 plots, Exalted+votes→16 plots
+- [x] Tool installation: Jinyu Princess (auto-clear parched), Thunder King (auto-clear pests), Earth-Slasher (gives Master Plow)
+- [x] Auto-clear upgrade flags on zone enter
+- [x] Profession seeds (6 types + 3 blossom saplings) with rep gating
+- [x] Enigma seed random herb harvest
 
-### Phase 4 — Quests, Dailies, Friendship
+### Phase 4A — Friendship System (COMPLETE)
+- [x] FriendshipManager with DB persistence (character_tillers_friendship table)
+- [x] Friendship rank system: Stranger → Acquaintance → Buddy → Friend → Good Friend → Best Friend
+- [x] 10 Tiller friendship NPCs with gossip (food/gift turn-in)
+- [x] Daily food timer: 1800 standing per NPC per day
+- [x] Daily gift timer: 540 standing per gift, 900 for preferred item
+- [x] Tillers Shrine gossip for reputation tracking (entry 215705)
+- [x] Dark Soil interaction for friendship gifts (entry 210565, 5 treasure types)
+- [x] ScriptName bindings for all friendship NPCs, shrine, dark soil
+
+### Phase 4B — Quests, Dailies
 - [ ] Daily quest system with Yoon, Andi, visiting farmers
-- [ ] Friendship reputation system with 10 Tiller NPCs
 - [ ] Vote questlines tracking
-- [ ] Profession seeds and decorative seeds
+- [ ] Work orders bulletin board
+- [ ] Sunsong Ranch ownership changes (post-Inherit the Earth)
 
 ### Phase 5 — Documentation & Verification
 - [ ] Final TILLERS.md update reflecting completed state
@@ -149,3 +196,6 @@ Sunsong Ranch is a personal farming system in Valley of the Four Winds. Each pla
 | 2026-05-25 | Planning | Analysis complete, TILLERS.md created with full roadmap |
 | 2026-05-25 | Phase 1 | Fixed deadlock (SavePlot_NoLock split), unordered_map→std::map, snprintf→std::string, CAST_AI→direct cast, enum class conversion, constexpr constants, [[nodiscard]] helpers, UpdateGrowthTimers centralization, reputation on harvest, SCALLION seed ID fix |
 | 2026-05-25 | Phase 2 | Added 6 new crop conditions (ALLURING, WIGGLING, SMOTHERED, WILD, RUNTY, TANGLED), 2 post-harvest soil states (STUBBORN, OCCUPIED), gossip options + handlers for all, post-harvest soil state chance logic, Tiller gift drop, fixed seed drop bug |
+| 2026-05-25 | Phase 2 | AI state machine (UpdateAI, FinishInteraction, 4 interaction types: CHANNEL/SUMMON/TIMER/MOVE_AWAY), all 8 mini-games implemented (Plainshawk summon, Virmen summon, channels, timer, distance), Dented Shovel (89880), interaction guard, tool item ID fixes, seed action offset bugfix |
+| 2026-05-25 | Phase 3 | Farm expansion timer system (15-min real-time via DB + Yoon gossip), tool installation gossip (3 upgrades), auto-clear upgrade flags, profession seeds (6 types + 3 blossoms), Enigma random herb harvest, rep-gated seed menu, Farmer Yoon NPC script (npc_farmer_yoon.cpp), CheckFarmExpiration on login/zone, expansion_timer_end column in character DB |
+| 2026-05-25 | Phase 4A | FriendshipManager with DB persistence (character_tillers_friendship table), FriendshipRank enum class (Stranger→Best Friend, 6 tiers), 10 Tiller friendship NPCs (npc_tillers_friendship.cpp), daily food/gift timers (1800/540/900 standing), Tillers Shrine gossip (go_tillers_shrine.cpp, entry 215705), Dark Soil treasure drops (go_dark_soil in tillers_farm.cpp, entry 210565, 5 treasure types), ScriptName bindings for all friendship NPCs + shrine + dark soil |

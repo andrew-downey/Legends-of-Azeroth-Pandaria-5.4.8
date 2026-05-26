@@ -254,6 +254,44 @@ void PlayerbotHolder::LogoutAllBots()
     }
 }
 
+void PlayerbotHolder::LogoutBotsWithoutRealPlayerInGroup()
+{
+    PlayerBotMap bots = playerBots;
+    for (auto& itr : bots)
+    {
+        Player* bot = itr.second;
+        if (!bot)
+            continue;
+
+        PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
+        if (!botAI || botAI->IsRealPlayer())
+            continue;
+
+        Group* group = bot->GetGroup();
+        if (group)
+        {
+            bool hasRealPlayer = false;
+            for (GroupReference* gref = group->GetFirstMember(); gref; gref = gref->next())
+            {
+                Player* member = gref->GetSource();
+                if (!member || !member->IsInWorld())
+                    continue;
+
+                PlayerbotAI* memberAI = GET_PLAYERBOT_AI(member);
+                if (!memberAI || memberAI->IsRealPlayer())
+                {
+                    hasRealPlayer = true;
+                    break;
+                }
+            }
+            if (hasRealPlayer)
+                continue;
+        }
+
+        LogoutPlayerBot(bot->GetGUID());
+    }
+}
+
 void PlayerbotMgr::CancelLogout()
 {
     Player* master = GetMaster();

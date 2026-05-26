@@ -1024,7 +1024,6 @@ void AddSC_timeless_isle();
 void AddSC_tillers_farm();
 void AddSC_tillers_friendship();
 void AddSC_tillers_shrine();
-void AddSC_tillers_dailies();
 void AddSC_tillers_vote();
 void AddSC_npc_farmer_yoon();
 void AddSC_wandering_island_east();
@@ -2093,7 +2092,6 @@ void AddPandariaScripts()
     AddSC_npc_farmer_yoon();
     AddSC_tillers_friendship();
     AddSC_tillers_shrine();
-    AddSC_tillers_dailies();
     AddSC_tillers_vote();
     AddSC_wandering_island_east();
     AddSC_wandering_island_north();

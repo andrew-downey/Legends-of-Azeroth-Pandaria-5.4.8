@@ -532,7 +532,6 @@ public:
         if (!hasFarm && player->GetQuestRewardStatus(QUEST_TUTORIAL_GATE))
             sFarmData->CreateFarm(player);
 
-        sFriendship->LoadFromDB(player);
         CheckFarmExpiration(player);
     }
 
@@ -544,8 +543,6 @@ public:
         DespawnFarm(player);
         sFarmData->SaveToDB(player->GetGUID());
         sFarmData->Unload(player->GetGUID());
-        sFriendship->SaveToDB(player->GetGUID());
-        sFriendship->Unload(player->GetGUID());
     }
 
     void OnUpdateZone(Player* player, uint32 newZone, uint32 newArea) override
@@ -1355,105 +1352,63 @@ public:
 };
 
 // ============================================================================
-// Registration
+// GetFactionIdForNpc — Maps NPC entry → Faction.dbc ID
 // ============================================================================
 
-// ============================================================================
-// FriendshipManager Implementation
-// ============================================================================
-
-bool FriendshipManager::LoadFromDB(Player* player)
+int32 GetFactionIdForNpc(uint32 npcEntry)
 {
-    ObjectGuid guid = player->GetGUID();
-    std::lock_guard<std::mutex> lock(_mutex);
-
-    QueryResult result = CharacterDatabase.PQuery(
-        "SELECT npc_entry, standing, daily_food_time, daily_gift_time "
-        "FROM character_tillers_friendship WHERE guid = %u",
-        guid.GetCounter());
-
-    if (result)
+    switch (npcEntry)
     {
-        do
-        {
-            Field* fields = result->Fetch();
-            uint32 npcEntry = fields[0].GetUInt32();
-            _friendships[guid][npcEntry] = FriendshipEntry();
-            _friendships[guid][npcEntry].standing = fields[1].GetInt32();
-            _friendships[guid][npcEntry].lastDailyFoodTime = fields[2].GetUInt32();
-            _friendships[guid][npcEntry].lastDailyGiftTime = fields[3].GetUInt32();
-        } while (result->NextRow());
-    }
-
-    return true;
-}
-
-void FriendshipManager::SaveToDB(ObjectGuid guid)
-{
-    std::lock_guard<std::mutex> lock(_mutex);
-    auto it = _friendships.find(guid);
-    if (it == _friendships.end())
-        return;
-
-    for (auto& pair : it->second)
-    {
-        CharacterDatabase.PExecute(
-            "INSERT INTO character_tillers_friendship (guid, npc_entry, standing, daily_food_time, daily_gift_time) "
-            "VALUES (%u, %u, %d, %u, %u) "
-            "ON DUPLICATE KEY UPDATE standing = %d, daily_food_time = %u, daily_gift_time = %u",
-            guid.GetCounter(), pair.first,
-            pair.second.standing, pair.second.lastDailyFoodTime, pair.second.lastDailyGiftTime,
-            pair.second.standing, pair.second.lastDailyFoodTime, pair.second.lastDailyGiftTime);
+        case NPC_CHEE_CHEE:      return FACTION_CHEE_CHEE;
+        case NPC_ELLA:           return FACTION_ELLA;
+        case NPC_FARMER_FUNG:    return FACTION_FARMER_FUNG;
+        case NPC_FISH_FELLREED:  return FACTION_FISH_FELLREED;
+        case NPC_GINA_MUDCLAW:   return FACTION_GINA;
+        case NPC_HAOHAN_MUDCLAW: return FACTION_HAOHAN;
+        case NPC_JOGU:           return FACTION_JOGU;
+        case NPC_OLD_HILLPAW:    return FACTION_OLD_HILLPAW;
+        case NPC_SHO:            return FACTION_SHO;
+        case NPC_TINA_MUDCLAW:   return FACTION_TINA;
+        case NPC_ANDI:           return FACTION_ANDI;
+        default:                 return FACTION_TILLERS;
     }
 }
 
-void FriendshipManager::Unload(ObjectGuid guid)
+// ============================================================================
+// GetTodaySeed — Server-wide daily seed for quest rotation
+// ============================================================================
+
+uint32 GetTodaySeed()
 {
-    std::lock_guard<std::mutex> lock(_mutex);
-    _friendships.erase(guid);
+    return uint32(time(nullptr) / 86400);
 }
 
-FriendshipEntry* FriendshipManager::GetFriendship(ObjectGuid playerGuid, uint32 npcEntry)
+// ============================================================================
+// FriendlyRank helpers (renamed from FriendshipRank)
+// ============================================================================
+
+char const* GetFriendlyRankName(FriendlyRank rank)
 {
-    std::lock_guard<std::mutex> lock(_mutex);
-    auto pit = _friendships.find(playerGuid);
-    if (pit == _friendships.end())
-        return nullptr;
-    auto nit = pit->second.find(npcEntry);
-    if (nit == pit->second.end())
-        return nullptr;
-    return &nit->second;
+    switch (rank)
+    {
+        case FriendlyRank::STRANGER:      return "Stranger";
+        case FriendlyRank::ACQUAINTANCE:  return "Acquaintance";
+        case FriendlyRank::BUDDY:         return "Buddy";
+        case FriendlyRank::FRIEND:        return "Friend";
+        case FriendlyRank::GOOD_FRIEND:   return "Good Friend";
+        case FriendlyRank::BEST_FRIEND:   return "Best Friend";
+        default:                          return "Unknown";
+    }
 }
 
-void FriendshipManager::ModifyStanding(ObjectGuid playerGuid, uint32 npcEntry, int32 amount)
+FriendlyRank GetFriendlyRank(int32 standing)
 {
-    std::lock_guard<std::mutex> lock(_mutex);
-    auto& entry = _friendships[playerGuid][npcEntry];
-    entry.standing += amount;
-    if (entry.standing < 0)
-        entry.standing = 0;
-}
-
-bool FriendshipManager::UpdateDailyFoodTimer(ObjectGuid playerGuid, uint32 npcEntry)
-{
-    std::lock_guard<std::mutex> lock(_mutex);
-    auto& entry = _friendships[playerGuid][npcEntry];
-    uint32 now = uint32(sWorld->GetGameTime());
-    if (now - entry.lastDailyFoodTime < FRIENDSHIP_DAILY_RESET_INTERVAL)
-        return false;
-    entry.lastDailyFoodTime = now;
-    return true;
-}
-
-bool FriendshipManager::UpdateDailyGiftTimer(ObjectGuid playerGuid, uint32 npcEntry)
-{
-    std::lock_guard<std::mutex> lock(_mutex);
-    auto& entry = _friendships[playerGuid][npcEntry];
-    uint32 now = uint32(sWorld->GetGameTime());
-    if (now - entry.lastDailyGiftTime < FRIENDSHIP_DAILY_RESET_INTERVAL)
-        return false;
-    entry.lastDailyGiftTime = now;
-    return true;
+    if (standing >= int32(FriendlyRank::BEST_FRIEND))   return FriendlyRank::BEST_FRIEND;
+    if (standing >= int32(FriendlyRank::GOOD_FRIEND))   return FriendlyRank::GOOD_FRIEND;
+    if (standing >= int32(FriendlyRank::FRIEND))        return FriendlyRank::FRIEND;
+    if (standing >= int32(FriendlyRank::BUDDY))         return FriendlyRank::BUDDY;
+    if (standing >= int32(FriendlyRank::ACQUAINTANCE))  return FriendlyRank::ACQUAINTANCE;
+    return FriendlyRank::STRANGER;
 }
 
 // ============================================================================

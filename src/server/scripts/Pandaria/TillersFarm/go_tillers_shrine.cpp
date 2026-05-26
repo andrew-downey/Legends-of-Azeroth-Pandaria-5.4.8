@@ -28,7 +28,7 @@
 
 // ============================================================================
 // Tillers Shrine GameObject Script
-// Shows friendship standings with all 10 Tiller NPCs
+// Shows per-NPC standing via reputation API for all 10 Tiller NPCs
 // ============================================================================
 
 class go_tillers_shrine : public GameObjectScript
@@ -38,7 +38,6 @@ public:
 
     bool OnGossipHello(Player* player, GameObject* go) override
     {
-        ObjectGuid playerGuid = player->GetGUID();
         uint32 gossipCount = 0;
 
         // Show overall Tillers faction reputation
@@ -52,7 +51,7 @@ public:
             gossipCount++;
         }
 
-        // Show friendship standings for each NPC
+        // Show per-NPC standings
         uint32 const npcEntries[10] =
         {
             NPC_CHEE_CHEE, NPC_ELLA, NPC_FARMER_FUNG, NPC_FISH_FELLREED, NPC_GINA_MUDCLAW,
@@ -67,12 +66,13 @@ public:
 
         for (uint8 i = 0; i < 10; ++i)
         {
-            FriendshipEntry* friendship = sFriendship->GetFriendship(playerGuid, npcEntries[i]);
-            int32 standing = friendship ? friendship->standing : 0;
-            FriendshipRank rank = GetFriendshipRank(standing);
+            int32 factionId = GetFactionIdForNpc(npcEntries[i]);
+            FactionEntry const* faction = sFactionStore.LookupEntry(factionId);
+            int32 standing = faction ? player->GetReputationMgr().GetReputation(faction) : 0;
+            FriendlyRank rank = GetFriendlyRank(standing);
 
             char standBuf[256];
-            snprintf(standBuf, sizeof(standBuf), "%s: %s (%d standing)", npcNames[i], GetFriendshipRankName(rank), standing);
+            snprintf(standBuf, sizeof(standBuf), "%s: %s (%d standing)", npcNames[i], GetFriendlyRankName(rank), standing);
             AddGossipItemFor(player, GOSSIP_ICON_CHAT, standBuf, GOSSIP_SENDER_MAIN, 0);
             gossipCount++;
         }

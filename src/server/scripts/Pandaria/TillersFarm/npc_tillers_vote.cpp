@@ -23,13 +23,13 @@
 #include "ReputationMgr.h"
 #include "DBCStores.h"
 #include "ObjectMgr.h"
+#include "QuestDef.h"
 
 #include "tillers_farm.h"
 
-enum VoteAction
-{
-    VOTE_ACTION_TURN_IN_CROPS = 1,
-};
+// ============================================================================
+// Shared vote gossip helpers
+// ============================================================================
 
 static void HandleVoteGossip(Player* player, Creature* creature, uint8 voteSlot)
 {
@@ -59,7 +59,7 @@ static void HandleVoteGossip(Player* player, Creature* creature, uint8 voteSlot)
             {
                 AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG,
                     std::string("Turn in ") + std::to_string(vr.requiredCount) + " " + vr.cropName + " to earn my vote (+350 rep)",
-                    GOSSIP_SENDER_MAIN, VOTE_ACTION_TURN_IN_CROPS);
+                    GOSSIP_SENDER_MAIN, 1);
             }
             else
             {
@@ -98,18 +98,22 @@ static void HandleVoteSelect(Player* player, Creature* creature, uint8 voteSlot)
 
     player->DestroyItemCount(vr.cropItem, vr.requiredCount, true);
     player->GetReputationMgr().ModifyReputation(sFactionStore.LookupEntry(FACTION_TILLERS), VOTE_REP_GAIN);
-    sFriendship->ModifyStanding(playerGuid, vr.npcEntry, VOTE_FRIENDSHIP_GAIN);
+
+    int32 npcFactionId = GetFactionIdForNpc(vr.npcEntry);
+    FactionEntry const* npcFaction = sFactionStore.LookupEntry(npcFactionId);
+    if (npcFaction)
+        player->GetReputationMgr().ModifyReputation(npcFaction, VOTE_FRIENDSHIP_GAIN);
 
     data->votesMask |= vr.voteBit;
     CharacterDatabase.PExecute(
         "UPDATE character_tillers_farm_data SET votes_mask = %u WHERE guid = %u",
         data->votesMask, playerGuid.GetCounter());
 
-    player->GetSession()->SendNotification("You earn %s's vote! +%d Tillers rep, +%d friendship.", vr.name, VOTE_REP_GAIN, VOTE_FRIENDSHIP_GAIN);
+    player->GetSession()->SendNotification("You earn %s's vote! +%d Tillers rep, +%d standing.", vr.name, VOTE_REP_GAIN, VOTE_FRIENDSHIP_GAIN);
 }
 
 // ============================================================================
-// Mung-Mung (entry 58733) - Vote Chain NPC
+// Mung-Mung (entry 58733) — vote slot 1
 // ============================================================================
 
 class npc_mung_mung : public CreatureScript
@@ -128,14 +132,14 @@ public:
         CloseGossipMenuFor(player);
         if (action == 99)
             return true;
-        if (action == VOTE_ACTION_TURN_IN_CROPS)
+        if (action == 1)
             HandleVoteSelect(player, creature, 1);
         return true;
     }
 };
 
 // ============================================================================
-// Nana Mudclaw (entry 64597) - Vote Chain NPC
+// Nana Mudclaw (entry 64597) — vote slot 3
 // ============================================================================
 
 class npc_nana_mudclaw : public CreatureScript
@@ -154,7 +158,7 @@ public:
         CloseGossipMenuFor(player);
         if (action == 99)
             return true;
-        if (action == VOTE_ACTION_TURN_IN_CROPS)
+        if (action == 1)
             HandleVoteSelect(player, creature, 3);
         return true;
     }

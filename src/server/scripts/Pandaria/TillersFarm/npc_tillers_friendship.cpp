@@ -61,35 +61,74 @@ std::map<uint32, uint32> const TillerGiftMap =
 };
 
 // ============================================================================
-// Friendship rank helpers
+// Food timer helpers (character_tillers_npc_timers)
 // ============================================================================
 
-char const* GetFriendshipRankName(FriendshipRank rank)
+static bool CanGiveFoodToday(Player* player, uint32 npcEntry)
 {
-    switch (rank)
+    uint32 today = uint32(time(nullptr) / 86400);
+    QueryResult result = CharacterDatabase.PQuery(
+        "SELECT last_food_day FROM character_tillers_npc_timers WHERE guid = %u AND npc_entry = %u",
+        player->GetGUID().GetCounter(), npcEntry);
+    if (!result)
+        return true;
+    return result->Fetch()[0].GetUInt32() < today;
+}
+
+static void SetFoodGivenToday(Player* player, uint32 npcEntry)
+{
+    uint32 today = uint32(time(nullptr) / 86400);
+    CharacterDatabase.PExecute(
+        "INSERT INTO character_tillers_npc_timers (guid, npc_entry, last_food_day) VALUES (%u, %u, %u) "
+        "ON DUPLICATE KEY UPDATE last_food_day = %u",
+        player->GetGUID().GetCounter(), npcEntry, today, today);
+}
+
+// ============================================================================
+// Visiting farmer rotation check
+// ============================================================================
+
+static bool IsVisitingFarmerActive(uint32 npcEntry)
+{
+    uint32 todaySeed = GetTodaySeed();
+    uint32 visitBase = (todaySeed / 7) % 4;
+    uint32 const visitingOrder[8] =
     {
-        case FriendshipRank::STRANGER:      return "Stranger";
-        case FriendshipRank::ACQUAINTANCE:  return "Acquaintance";
-        case FriendshipRank::BUDDY:         return "Buddy";
-        case FriendshipRank::FRIEND:        return "Friend";
-        case FriendshipRank::GOOD_FRIEND:   return "Good Friend";
-        case FriendshipRank::BEST_FRIEND:   return "Best Friend";
-        default:                            return "Unknown";
+        NPC_CHEE_CHEE, NPC_ELLA, NPC_FARMER_FUNG, NPC_FISH_FELLREED,
+        NPC_GINA_MUDCLAW, NPC_JOGU, NPC_SHO, NPC_TINA_MUDCLAW
+    };
+    for (uint8 i = 0; i < 2; ++i)
+    {
+        uint8 idx = visitBase * 2 + i;
+        if (idx < 8 && visitingOrder[idx] == npcEntry)
+            return true;
     }
-}
-
-FriendshipRank GetFriendshipRank(int32 standing)
-{
-    if (standing >= int32(FriendshipRank::BEST_FRIEND))   return FriendshipRank::BEST_FRIEND;
-    if (standing >= int32(FriendshipRank::GOOD_FRIEND))   return FriendshipRank::GOOD_FRIEND;
-    if (standing >= int32(FriendshipRank::FRIEND))        return FriendshipRank::FRIEND;
-    if (standing >= int32(FriendshipRank::BUDDY))         return FriendshipRank::BUDDY;
-    if (standing >= int32(FriendshipRank::ACQUAINTANCE))  return FriendshipRank::ACQUAINTANCE;
-    return FriendshipRank::STRANGER;
+    return false;
 }
 
 // ============================================================================
-// Tiller Friendship NPC Script - handles all 10 NPCs
+// Helper: get standing from reputation API
+// ============================================================================
+
+static int32 GetNpcStanding(Player* player, uint32 npcEntry)
+{
+    int32 factionId = GetFactionIdForNpc(npcEntry);
+    FactionEntry const* faction = sFactionStore.LookupEntry(factionId);
+    if (!faction)
+        return 0;
+    return player->GetReputationMgr().GetReputation(faction);
+}
+
+static void ModifyNpcStanding(Player* player, uint32 npcEntry, int32 amount)
+{
+    int32 factionId = GetFactionIdForNpc(npcEntry);
+    FactionEntry const* faction = sFactionStore.LookupEntry(factionId);
+    if (faction)
+        player->GetReputationMgr().ModifyReputation(faction, amount);
+}
+
+// ============================================================================
+// Tiller Friendship NPC Script — handles all 10 NPCs
 // ============================================================================
 
 class npc_tillers_friendship : public CreatureScript
@@ -116,31 +155,24 @@ private:
         uint32 npcEntry = creature->GetEntry();
         ObjectGuid playerGuid = player->GetGUID();
 
-        PlayerFarmCache* data = GetPlayerFarmData(playerGuid);
-
-        FriendshipEntry* friendship = sFriendship->GetFriendship(playerGuid, npcEntry);
-        if (!friendship)
-        {
-            sFriendship->ModifyStanding(playerGuid, npcEntry, 0);
-            friendship = sFriendship->GetFriendship(playerGuid, npcEntry);
-        }
-
-        FriendshipRank rank = GetFriendshipRank(friendship->standing);
+        // Show friendship rank from reputation API
+        int32 standing = GetNpcStanding(player, npcEntry);
+        FriendlyRank rank = GetFriendlyRank(standing);
         int32 nextRankValue = 0;
         switch (rank)
         {
-            case FriendshipRank::STRANGER:      nextRankValue = int32(FriendshipRank::ACQUAINTANCE); break;
-            case FriendshipRank::ACQUAINTANCE:  nextRankValue = int32(FriendshipRank::BUDDY); break;
-            case FriendshipRank::BUDDY:         nextRankValue = int32(FriendshipRank::FRIEND); break;
-            case FriendshipRank::FRIEND:        nextRankValue = int32(FriendshipRank::GOOD_FRIEND); break;
-            case FriendshipRank::GOOD_FRIEND:   nextRankValue = int32(FriendshipRank::BEST_FRIEND); break;
-            case FriendshipRank::BEST_FRIEND:   nextRankValue = 0; break;
+            case FriendlyRank::STRANGER:      nextRankValue = int32(FriendlyRank::ACQUAINTANCE); break;
+            case FriendlyRank::ACQUAINTANCE:  nextRankValue = int32(FriendlyRank::BUDDY); break;
+            case FriendlyRank::BUDDY:         nextRankValue = int32(FriendlyRank::FRIEND); break;
+            case FriendlyRank::FRIEND:        nextRankValue = int32(FriendlyRank::GOOD_FRIEND); break;
+            case FriendlyRank::GOOD_FRIEND:   nextRankValue = int32(FriendlyRank::BEST_FRIEND); break;
+            case FriendlyRank::BEST_FRIEND:   nextRankValue = 0; break;
         }
 
-        std::string rankText = std::string("Friendship: ") + GetFriendshipRankName(rank);
+        std::string rankText = std::string("Friendship: ") + GetFriendlyRankName(rank);
         if (nextRankValue > 0)
         {
-            int32 remaining = nextRankValue - friendship->standing;
+            int32 remaining = nextRankValue - standing;
             rankText += std::string(" (") + std::to_string(remaining) + " to next rank)";
         }
         else
@@ -148,9 +180,8 @@ private:
 
         AddGossipItemFor(player, GOSSIP_ICON_CHAT, rankText, GOSSIP_SENDER_MAIN, 0);
 
-        // Check food daily timer
-        bool canGiveFood = sFriendship->UpdateDailyFoodTimer(playerGuid, npcEntry);
-
+        // Food giving (once per day per NPC, tracked via character_tillers_npc_timers)
+        bool canGiveFood = CanGiveFoodToday(player, npcEntry);
         auto foodIt = TillerFoodMap.find(npcEntry);
         if (foodIt != TillerFoodMap.end())
         {
@@ -166,68 +197,52 @@ private:
             }
         }
 
-        // Check gift daily timer
-        bool canGiveGift = sFriendship->UpdateDailyGiftTimer(playerGuid, npcEntry);
-
+        // Gift giving (unlimited — no daily cap)
         auto giftIt = TillerGiftMap.find(npcEntry);
         if (giftIt != TillerGiftMap.end())
         {
-            if (canGiveGift)
+            if (player->HasItemCount(giftIt->second, 1))
             {
-                // Check if player has preferred gift
-                if (player->HasItemCount(giftIt->second, 1))
-                {
-                    std::string giftText = std::string("Offer your ") + GetItemLink(giftIt->second, *player) + " (+900 standing)";
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, giftText, GOSSIP_SENDER_MAIN, 2);
-                }
-
-                // Check for other friendship items
-                for (auto& itemPair : TillerGiftMap)
-                {
-                    if (itemPair.first == npcEntry)
-                        continue;
-                    if (player->HasItemCount(itemPair.second, 1))
-                    {
-                        std::string giftText = std::string("Offer your ") + GetItemLink(itemPair.second, *player) + " (+540 standing)";
-                        AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, giftText, GOSSIP_SENDER_MAIN, 100 + itemPair.second);
-                    }
-                }
+                std::string giftText = std::string("Offer your ") + GetItemLink(giftIt->second, *player) + " (+900 standing)";
+                AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, giftText, GOSSIP_SENDER_MAIN, 2);
             }
-            else
+
+            for (auto& itemPair : TillerGiftMap)
             {
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "You have already given a gift today.", GOSSIP_SENDER_MAIN, 0);
+                if (itemPair.first == npcEntry)
+                    continue;
+                if (player->HasItemCount(itemPair.second, 1))
+                {
+                    std::string giftText = std::string("Offer your ") + GetItemLink(itemPair.second, *player) + " (+540 standing)";
+                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, giftText, GOSSIP_SENDER_MAIN, 100 + itemPair.second);
+                }
             }
         }
 
-        // ====================================================================
-        // Visiting Farmer Quest Completion (if player has an active quest)
-        // ====================================================================
-        uint32 visitQuestId = 0;
-        switch (npcEntry)
+        // Visiting farmer quest — only show if this NPC's quest is active today
+        if (IsVisitingFarmerActive(npcEntry))
         {
-            case NPC_CHEE_CHEE:    visitQuestId = QUEST_VISITING_CHEE_CHEE; break;
-            case NPC_ELLA:         visitQuestId = QUEST_VISITING_ELLA; break;
-            case NPC_FARMER_FUNG:  visitQuestId = QUEST_VISITING_FUNG; break;
-            case NPC_FISH_FELLREED:visitQuestId = QUEST_VISITING_FELLREED; break;
-            case NPC_GINA_MUDCLAW: visitQuestId = QUEST_VISITING_GINA; break;
-            case NPC_JOGU:         visitQuestId = QUEST_VISITING_JOGU; break;
-            case NPC_SHO:          visitQuestId = QUEST_VISITING_SHO; break;
-            case NPC_TINA_MUDCLAW: visitQuestId = QUEST_VISITING_TINA; break;
-        }
-        if (visitQuestId > 0 && player->GetQuestStatus(visitQuestId) == QUEST_STATUS_INCOMPLETE)
-        {
-            if (player->CanCompleteQuest(visitQuestId))
+            uint32 visitQuestId = 0;
+            switch (npcEntry)
             {
-                int32 vfGain = (npcEntry == NPC_GINA_MUDCLAW) ? 2600 : 2000;
+                case NPC_CHEE_CHEE:    visitQuestId = QUEST_VISITING_CHEE_CHEE; break;
+                case NPC_ELLA:         visitQuestId = QUEST_VISITING_ELLA; break;
+                case NPC_FARMER_FUNG:  visitQuestId = QUEST_VISITING_FUNG; break;
+                case NPC_FISH_FELLREED:visitQuestId = QUEST_VISITING_FELLREED; break;
+                case NPC_GINA_MUDCLAW: visitQuestId = QUEST_VISITING_GINA; break;
+                case NPC_JOGU:         visitQuestId = QUEST_VISITING_JOGU; break;
+                case NPC_SHO:          visitQuestId = QUEST_VISITING_SHO; break;
+                case NPC_TINA_MUDCLAW: visitQuestId = QUEST_VISITING_TINA; break;
+            }
+            if (visitQuestId > 0 && player->GetQuestStatus(visitQuestId) == QUEST_STATUS_INCOMPLETE && player->CanCompleteQuest(visitQuestId))
+            {
                 AddGossipItemFor(player, GOSSIP_ICON_CHAT,
-                    std::string("Turn in your quest (+150 rep, +") + std::to_string(vfGain) + " friendship)",
+                    std::string("Turn in your visiting quest (+150 rep, +2000 friendship)"),
                     GOSSIP_SENDER_MAIN, 3);
             }
         }
 
-        // ====================================================================
-        // Vote Questlines (Gina, Farmer Fung, Haohan)
-        // ====================================================================
+        // Vote questlines (Gina, Farmer Fung, Haohan)
         uint8 npcVoteIndex = 0xFF;
         for (uint8 i = 0; i < 5; ++i)
         {
@@ -239,8 +254,9 @@ private:
         }
         if (npcVoteIndex != 0xFF)
         {
+            PlayerFarmCache* data = GetPlayerFarmData(playerGuid);
             auto const& vr = VoteRequirements[npcVoteIndex];
-            if (!(data->votesMask & vr.voteBit))
+            if (!(data && (data->votesMask & vr.voteBit)))
             {
                 FactionEntry const* tillersFaction = sFactionStore.LookupEntry(FACTION_TILLERS);
                 int32 rep = tillersFaction ? player->GetReputationMgr().GetReputation(tillersFaction) : 0;
@@ -289,15 +305,16 @@ private:
 
         if (action == 1)
         {
-            // Food turn-in
+            // Food turn-in (once per day per NPC)
             auto foodIt = TillerFoodMap.find(npcEntry);
             if (foodIt != TillerFoodMap.end() && player->HasItemCount(foodIt->second, 1))
             {
-                if (sFriendship->UpdateDailyFoodTimer(playerGuid, npcEntry))
+                if (CanGiveFoodToday(player, npcEntry))
                 {
                     player->DestroyItemCount(foodIt->second, 1, true);
-                    sFriendship->ModifyStanding(playerGuid, npcEntry, FRIENDSHIP_DAILY_FOOD_GAIN);
-                    player->GetSession()->SendNotification("You offer food and gain 1800 friendship standing.");
+                    SetFoodGivenToday(player, npcEntry);
+                    ModifyNpcStanding(player, npcEntry, NPC_FOOD_STANDING_GAIN);
+                    player->GetSession()->SendNotification("You offer food and gain 1800 standing.");
                 }
             }
             return;
@@ -309,12 +326,9 @@ private:
             auto giftIt = TillerGiftMap.find(npcEntry);
             if (giftIt != TillerGiftMap.end() && player->HasItemCount(giftIt->second, 1))
             {
-                if (sFriendship->UpdateDailyGiftTimer(playerGuid, npcEntry))
-                {
-                    player->DestroyItemCount(giftIt->second, 1, true);
-                    sFriendship->ModifyStanding(playerGuid, npcEntry, FRIENDSHIP_IDEAL_GIFT_GAIN);
-                    player->GetSession()->SendNotification("You offer a preferred gift and gain 900 friendship standing.");
-                }
+                player->DestroyItemCount(giftIt->second, 1, true);
+                ModifyNpcStanding(player, npcEntry, NPC_IDEAL_GIFT_STANDING_GAIN);
+                player->GetSession()->SendNotification("You offer a preferred gift and gain 900 standing.");
             }
             return;
         }
@@ -325,12 +339,9 @@ private:
             uint32 itemId = action - 100;
             if (player->HasItemCount(itemId, 1))
             {
-                if (sFriendship->UpdateDailyGiftTimer(playerGuid, npcEntry))
-                {
-                    player->DestroyItemCount(itemId, 1, true);
-                    sFriendship->ModifyStanding(playerGuid, npcEntry, FRIENDSHIP_DAILY_GIFT_GAIN);
-                    player->GetSession()->SendNotification("You offer a gift and gain 540 friendship standing.");
-                }
+                player->DestroyItemCount(itemId, 1, true);
+                ModifyNpcStanding(player, npcEntry, NPC_GIFT_STANDING_GAIN);
+                player->GetSession()->SendNotification("You offer a gift and gain 540 standing.");
             }
             return;
         }
@@ -339,24 +350,23 @@ private:
         {
             // Visiting farmer quest completion
             uint32 questId = 0;
-            int32 friendshipGain = 2000;
             switch (npcEntry)
             {
-                case NPC_CHEE_CHEE:    questId = QUEST_VISITING_CHEE_CHEE;    friendshipGain = 2000; break;
-                case NPC_ELLA:         questId = QUEST_VISITING_ELLA;         friendshipGain = 2000; break;
-                case NPC_FARMER_FUNG:  questId = QUEST_VISITING_FUNG;         friendshipGain = 2000; break;
-                case NPC_FISH_FELLREED:questId = QUEST_VISITING_FELLREED;     friendshipGain = 2000; break;
-                case NPC_GINA_MUDCLAW: questId = QUEST_VISITING_GINA;         friendshipGain = 2600; break;
-                case NPC_JOGU:         questId = QUEST_VISITING_JOGU;         friendshipGain = 2000; break;
-                case NPC_SHO:          questId = QUEST_VISITING_SHO;          friendshipGain = 2000; break;
-                case NPC_TINA_MUDCLAW: questId = QUEST_VISITING_TINA;         friendshipGain = 2000; break;
+                case NPC_CHEE_CHEE:    questId = QUEST_VISITING_CHEE_CHEE; break;
+                case NPC_ELLA:         questId = QUEST_VISITING_ELLA; break;
+                case NPC_FARMER_FUNG:  questId = QUEST_VISITING_FUNG; break;
+                case NPC_FISH_FELLREED:questId = QUEST_VISITING_FELLREED; break;
+                case NPC_GINA_MUDCLAW: questId = QUEST_VISITING_GINA; break;
+                case NPC_JOGU:         questId = QUEST_VISITING_JOGU; break;
+                case NPC_SHO:          questId = QUEST_VISITING_SHO; break;
+                case NPC_TINA_MUDCLAW: questId = QUEST_VISITING_TINA; break;
             }
             if (questId > 0 && player->GetQuestStatus(questId) == QUEST_STATUS_INCOMPLETE)
             {
                 player->CompleteQuest(questId, true);
-                player->GetReputationMgr().ModifyReputation(sFactionStore.LookupEntry(FACTION_TILLERS), DAILY_VISITING_REWARD_REP);
-                sFriendship->ModifyStanding(playerGuid, npcEntry, friendshipGain);
-                player->GetSession()->SendNotification("Quest complete! +%d Tillers rep, +%d friendship.", DAILY_VISITING_REWARD_REP, friendshipGain);
+                player->GetReputationMgr().ModifyReputation(sFactionStore.LookupEntry(FACTION_TILLERS), 150);
+                ModifyNpcStanding(player, npcEntry, 2000);
+                player->GetSession()->SendNotification("Quest complete! +150 Tillers rep, +2000 standing.");
             }
             return;
         }
@@ -381,7 +391,7 @@ private:
                 {
                     player->DestroyItemCount(vr.cropItem, vr.requiredCount, true);
                     player->GetReputationMgr().ModifyReputation(sFactionStore.LookupEntry(FACTION_TILLERS), VOTE_REP_GAIN);
-                    sFriendship->ModifyStanding(playerGuid, npcEntry, VOTE_FRIENDSHIP_GAIN);
+                    ModifyNpcStanding(player, npcEntry, VOTE_FRIENDSHIP_GAIN);
 
                     PlayerFarmCache* farmData = GetPlayerFarmData(playerGuid);
                     if (farmData)
@@ -392,7 +402,7 @@ private:
                             farmData->votesMask, playerGuid.GetCounter());
                     }
 
-                    player->GetSession()->SendNotification("You earn %s's vote! +%d Tillers rep, +%d friendship.", vr.name, VOTE_REP_GAIN, VOTE_FRIENDSHIP_GAIN);
+                    player->GetSession()->SendNotification("You earn %s's vote! +%d Tillers rep, +%d standing.", vr.name, VOTE_REP_GAIN, VOTE_FRIENDSHIP_GAIN);
                 }
             }
             return;

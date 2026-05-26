@@ -25,6 +25,7 @@
 #include "World.h"
 #include "ObjectMgr.h"
 #include "QuestDef.h"
+#include "GossipDef.h"
 
 #include "tillers_farm.h"
 
@@ -51,6 +52,30 @@ bool HasReputation(Player* player, uint32 threshold)
     if (!tillersFaction)
         return false;
     return player->GetReputationMgr().GetReputation(tillersFaction) >= threshold;
+}
+
+// ============================================================================
+// Server-wide daily rotation helpers
+// ============================================================================
+
+static bool IsCropDailyActive(uint32 questId)
+{
+    uint32 todaySeed = GetTodaySeed();
+    uint32 index = questId - QUEST_CROP_BASE;
+    if (index >= CROP_DAILY_COUNT)
+        return false;
+    bool cropSecondHalf = (todaySeed % 2 == 1);
+    if (cropSecondHalf)
+        return index >= 5;
+    else
+        return index < 5;
+}
+
+static bool IsKillDailyActive(uint32 questId)
+{
+    uint32 todaySeed = GetTodaySeed();
+    uint32 killIndex = todaySeed % KILL_DAILY_COUNT;
+    return (questId - QUEST_KILL_BASE) == killIndex;
 }
 
 // ============================================================================
@@ -112,7 +137,7 @@ public:
             else if (data->unlockedPlots < 16 && HasReputation(player, REP_TILLERS_EXALTED) && data->votesMask >= 31)
                 AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Move the mossy boulder to expand the farm.", GOSSIP_SENDER_MAIN, 12);
 
-            // Tool installation options (after expansions are complete)
+            // Tool installation options
             if (data->unlockedPlots >= 8 && !data->upgrades.hasIrrigation)
             {
                 if (player->HasItemCount(ITEM_JINYU_PRINCESS_SPRINKLER, 1))
@@ -139,101 +164,49 @@ public:
         }
 
         // ====================================================================
-        // Daily Quest Assignment
+        // Daily Quest Rotation — uses creature_queststarter relations + filtering
         // ====================================================================
-        ObjectGuid playerGuid = player->GetGUID();
 
-        // Daily crop quest
-        uint32 cropQuestId = sDailyQuest->GetRandomCropDaily(playerGuid);
-        if (cropQuestId > 0 && !sDailyQuest->IsDailyComplete(playerGuid, cropQuestId))
+        if (creature->IsQuestGiver())
         {
-            for (uint8 i = 0; i < CROP_DAILY_COUNT; ++i)
+            QuestRelationResult objectQR = sObjectMgr->GetCreatureQuestRelations(creature->GetEntry());
+            QuestMenu& qm = player->PlayerTalkClass->GetQuestMenu();
+            qm.ClearMenu();
+
+            // Turn-in quests (involved relations)
+            QuestRelationResult objectQIR = sObjectMgr->GetCreatureQuestInvolvedRelations(creature->GetEntry());
+            for (uint32 questId : objectQIR)
             {
-                if (CropDailies[i].questId == cropQuestId)
-                {
-                    std::string cropText = std::string("Plant ") + std::to_string(CropDailies[i].requiredCount) + " " + GetCropName(CropDailies[i].crop);
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, cropText + " (+350 rep)", GOSSIP_SENDER_MAIN, cropQuestId);
-                    break;
-                }
+                QuestStatus status = player->GetQuestStatus(questId);
+                if (status == QUEST_STATUS_COMPLETE)
+                    qm.AddMenuItem(questId, 4);
+                else if (status == QUEST_STATUS_INCOMPLETE)
+                    qm.AddMenuItem(questId, 4);
             }
-        }
 
-        // Daily kill quest
-        uint32 killQuestId = sDailyQuest->GetRandomKillDaily(playerGuid);
-        if (killQuestId > 0 && !sDailyQuest->IsDailyComplete(playerGuid, killQuestId))
-        {
-            char const* killName = nullptr;
-            switch (killQuestId)
+            // Available quests — filter by rotation
+            for (uint32 questId : objectQR)
             {
-                case QUEST_KILL_LESSER_EVILS: killName = "The Lesser of Two Evils"; break;
-                case QUEST_KILL_STEALING:     killName = "Stealing is Bad..."; break;
-                case QUEST_KILL_STALLING:     killName = "Stalling the Ravage"; break;
-                case QUEST_KILL_HUNTER_CHIEF: killName = "The Kunzen Hunter-Chief"; break;
-                case QUEST_KILL_SIMIAN:       killName = "Simian Sabotage"; break;
+                Quest const* quest = sObjectMgr->GetQuestTemplate(questId);
+                if (!quest || !player->CanTakeQuest(quest, false))
+                    continue;
+
+                bool active = false;
+                if (questId >= QUEST_CROP_BASE && questId < QUEST_CROP_BASE + CROP_DAILY_COUNT)
+                    active = IsCropDailyActive(questId);
+                else if (questId >= QUEST_KILL_BASE && questId < QUEST_KILL_BASE + KILL_DAILY_COUNT)
+                    active = IsKillDailyActive(questId);
+                else if (questId == QUEST_ANDI_GIFT)
+                    active = true;
+
+                if (!active)
+                    continue;
+
+                if (player->GetQuestStatus(questId) == QUEST_STATUS_NONE)
+                    qm.AddMenuItem(questId, 2);
+                else if (quest->IsRepeatable() && player->GetQuestStatus(questId) == QUEST_STATUS_COMPLETE)
+                    qm.AddMenuItem(questId, 4);
             }
-            if (killName)
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, std::string(killName) + " (+275 rep)", GOSSIP_SENDER_MAIN, killQuestId);
-        }
-
-        // Andi gift quest
-        if (!sDailyQuest->IsDailyComplete(playerGuid, QUEST_ANDI_GIFT))
-        {
-            uint32 giftTarget = sDailyQuest->GetAndiGiftTarget(playerGuid);
-            char const* targetName = nullptr;
-            switch (giftTarget)
-            {
-                case NPC_CHEE_CHEE:      targetName = "Chee Chee"; break;
-                case NPC_ELLA:           targetName = "Ella"; break;
-                case NPC_FARMER_FUNG:    targetName = "Farmer Fung"; break;
-                case NPC_FISH_FELLREED:  targetName = "Fish Fellreed"; break;
-                case NPC_GINA_MUDCLAW:   targetName = "Gina Mudclaw"; break;
-                case NPC_HAOHAN_MUDCLAW: targetName = "Haohan Mudclaw"; break;
-                case NPC_JOGU:           targetName = "Jogu the Drunk"; break;
-                case NPC_OLD_HILLPAW:    targetName = "Old Hillpaw"; break;
-                case NPC_SHO:            targetName = "Sho"; break;
-                case NPC_TINA_MUDCLAW:   targetName = "Tina Mudclaw"; break;
-            }
-            if (targetName)
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, std::string("Deliver gift to ") + targetName + " (+150 rep)", GOSSIP_SENDER_MAIN, QUEST_ANDI_GIFT);
-        }
-
-        // Visiting farmers
-        uint32 visitingNpcs[8] =
-        {
-            NPC_CHEE_CHEE, NPC_ELLA, NPC_FARMER_FUNG, NPC_FISH_FELLREED,
-            NPC_GINA_MUDCLAW, NPC_JOGU, NPC_SHO, NPC_TINA_MUDCLAW
-        };
-        char const* visitingNames[8] =
-        {
-            "Chee Chee", "Ella", "Farmer Fung", "Fish Fellreed",
-            "Gina Mudclaw", "Jogu the Drunk", "Sho", "Tina Mudclaw"
-        };
-        char const* visitingQuestNames[8] =
-        {
-            "Not in Chee-Chee's Backyard", "You Have to Burn the Ropes", "Water, Water Everywhere",
-            "The Kunzen Legend-Chief", "Money Matters", "Weed War II", "Where It Counts", "They Don't Even Wear Them"
-        };
-
-        uint32 farmer1 = 0, farmer2 = 0;
-        uint8 sel = 0, attempts = 0;
-        while (sel < 2 && attempts < 50)
-        {
-            uint8 idx = urand(0, 7);
-            bool dup = (visitingNpcs[idx] == farmer1);
-            if (!dup) { if (sel == 0) farmer1 = visitingNpcs[idx]; else farmer2 = visitingNpcs[idx]; sel++; }
-            attempts++;
-        }
-        if (farmer1)
-        {
-            for (uint8 i = 0; i < 8; ++i)
-                if (visitingNpcs[i] == farmer1)
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, visitingQuestNames[i] + std::string(" (") + visitingNames[i] + " visits) (+150 rep, +2000 friendship)", GOSSIP_SENDER_MAIN, farmer1);
-        }
-        if (farmer2)
-        {
-            for (uint8 i = 0; i < 8; ++i)
-                if (visitingNpcs[i] == farmer2)
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, visitingQuestNames[i] + std::string(" (") + visitingNames[i] + " visits) (+150 rep, +2000 friendship)", GOSSIP_SENDER_MAIN, farmer2);
         }
 
         AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Goodbye.", GOSSIP_SENDER_MAIN, 99);
@@ -306,74 +279,6 @@ public:
                 player->GetSession()->SendNotification("Earth-Slasher installed! Here is the Master Plow.");
                 player->AddItem(ITEM_MASTER_PLOW, 1);
                 break;
-            }
-        }
-
-        // ====================================================================
-        // Daily Quest Granting (actions = quest IDs or NPC entries)
-        // ====================================================================
-        ObjectGuid playerGuid = player->GetGUID();
-
-        if (action >= QUEST_CROP_BASE && action < QUEST_CROP_BASE + CROP_DAILY_COUNT)
-        {
-            if (!sDailyQuest->IsDailyComplete(playerGuid, action))
-            {
-                Quest const* quest = sObjectMgr->GetQuestTemplate(action);
-                if (quest && player->CanAddQuest(quest, true))
-                {
-                    player->AddQuest(quest, creature);
-                    player->GetSession()->SendNotification("You accepted the daily crop quest.");
-                }
-            }
-        }
-        else if (action >= QUEST_KILL_BASE && action < QUEST_KILL_BASE + KILL_DAILY_COUNT)
-        {
-            if (!sDailyQuest->IsDailyComplete(playerGuid, action))
-            {
-                Quest const* quest = sObjectMgr->GetQuestTemplate(action);
-                if (quest && player->CanAddQuest(quest, true))
-                {
-                    player->AddQuest(quest, creature);
-                    player->GetSession()->SendNotification("You accepted the daily kill quest.");
-                }
-            }
-        }
-        else if (action == QUEST_ANDI_GIFT)
-        {
-            if (!sDailyQuest->IsDailyComplete(playerGuid, QUEST_ANDI_GIFT))
-            {
-                Quest const* quest = sObjectMgr->GetQuestTemplate(QUEST_ANDI_GIFT);
-                if (quest && player->CanAddQuest(quest, true))
-                {
-                    player->AddQuest(quest, creature);
-                    player->GetSession()->SendNotification("Andi gives you a gift to deliver!");
-                }
-            }
-        }
-        else if (action == NPC_CHEE_CHEE || action == NPC_ELLA || action == NPC_FARMER_FUNG ||
-                 action == NPC_FISH_FELLREED || action == NPC_GINA_MUDCLAW || action == NPC_JOGU ||
-                 action == NPC_SHO || action == NPC_TINA_MUDCLAW)
-        {
-            uint32 questId = 0;
-            switch (action)
-            {
-                case NPC_CHEE_CHEE:    questId = QUEST_VISITING_CHEE_CHEE; break;
-                case NPC_ELLA:         questId = QUEST_VISITING_ELLA; break;
-                case NPC_FARMER_FUNG:  questId = QUEST_VISITING_FUNG; break;
-                case NPC_FISH_FELLREED:questId = QUEST_VISITING_FELLREED; break;
-                case NPC_GINA_MUDCLAW: questId = QUEST_VISITING_GINA; break;
-                case NPC_JOGU:         questId = QUEST_VISITING_JOGU; break;
-                case NPC_SHO:          questId = QUEST_VISITING_SHO; break;
-                case NPC_TINA_MUDCLAW: questId = QUEST_VISITING_TINA; break;
-            }
-            if (questId > 0)
-            {
-                Quest const* quest = sObjectMgr->GetQuestTemplate(questId);
-                if (quest && player->CanAddQuest(quest, true))
-                {
-                    player->AddQuest(quest, creature);
-                    player->GetSession()->SendNotification("You accepted the visiting farmer quest!");
-                }
             }
         }
 

@@ -67,8 +67,8 @@ constexpr uint32 REP_TILLERS_REVERED = 21000;
 constexpr uint32 REP_TILLERS_EXALTED = 42000;
 constexpr uint32 REP_TILLERS_NEUTRAL_MIN = 3000;
 
-// Tillers faction
-constexpr int32 FACTION_TILLERS = 1074;
+// Tillers faction (from Faction.dbc: 1272 = "The Tillers")
+constexpr int32 FACTION_TILLERS = 1272;
 
 // Harvest reputation gain (at level 90)
 constexpr int32 HARVEST_REP_GAIN = 50;
@@ -224,19 +224,24 @@ bool CheckFarmExpiration(Player* player);
 PlayerFarmCache* GetPlayerFarmData(ObjectGuid guid);
 
 // ============================================================================
-// Friendship System
+// Per-NPC Faction IDs (from Faction.dbc)
 // ============================================================================
 
-constexpr uint32 FACTION_TILLER_CHEE_CHEE = 2091;
-constexpr uint32 FACTION_TILLER_ELLA = 2092;
-constexpr uint32 FACTION_TILLER_FARMER_FUNG = 2093;
-constexpr uint32 FACTION_TILLER_FISH_FELLREED = 2094;
-constexpr uint32 FACTION_TILLER_GINA_MUDCLAW = 2095;
-constexpr uint32 FACTION_TILLER_HAOHAN_MUDCLAW = 2096;
-constexpr uint32 FACTION_TILLER_JOGU = 2097;
-constexpr uint32 FACTION_TILLER_OLD_HILLPAW = 2098;
-constexpr uint32 FACTION_TILLER_SHO = 2099;
-constexpr uint32 FACTION_TILLER_TINA_MUDCLAW = 2100;
+// DBC faction IDs for individual Tillers NPCs (parented to 1272)
+constexpr int32 FACTION_JOGU         = 1273;
+constexpr int32 FACTION_ELLA         = 1275;
+constexpr int32 FACTION_OLD_HILLPAW  = 1276;
+constexpr int32 FACTION_CHEE_CHEE    = 1277;
+constexpr int32 FACTION_SHO          = 1278;
+constexpr int32 FACTION_HAOHAN       = 1279;
+constexpr int32 FACTION_TINA         = 1280;
+constexpr int32 FACTION_GINA         = 1281;
+constexpr int32 FACTION_FISH_FELLREED = 1282;
+constexpr int32 FACTION_FARMER_FUNG  = 1283;
+constexpr int32 FACTION_ANDI         = 1284;
+
+// NPC entry → faction ID mapper
+[[nodiscard]] int32 GetFactionIdForNpc(uint32 npcEntry);
 
 constexpr uint32 NPC_CHEE_CHEE = 58712;
 constexpr uint32 NPC_ELLA = 58703;
@@ -248,6 +253,7 @@ constexpr uint32 NPC_JOGU = 58704;
 constexpr uint32 NPC_OLD_HILLPAW = 58705;
 constexpr uint32 NPC_SHO = 58709;
 constexpr uint32 NPC_TINA_MUDCLAW = 58711;
+constexpr uint32 NPC_ANDI = 58708;
 
 // Friendship gift items (Dark Soil treasures)
 constexpr uint32 ITEM_RUBY_SHARD = 79264;
@@ -284,7 +290,13 @@ constexpr uint32 FOOD_OLD_HILLPAW = 74649;
 constexpr uint32 FOOD_SHO = 74645;
 constexpr uint32 FOOD_TINA_MUDCLAW = 74652;
 
-enum class FriendshipRank : int32
+// Standing gain values (replaces old FRIENDSHIP_* constants)
+constexpr int32 NPC_FOOD_STANDING_GAIN = 1800;
+constexpr int32 NPC_GIFT_STANDING_GAIN = 540;
+constexpr int32 NPC_IDEAL_GIFT_STANDING_GAIN = 900;
+
+// Friendship rank thresholds (mapped from reputation standing)
+enum class FriendlyRank : int32
 {
     STRANGER = 0,
     ACQUAINTANCE = 8400,
@@ -294,73 +306,22 @@ enum class FriendshipRank : int32
     BEST_FRIEND = 42000,
 };
 
-constexpr int32 FRIENDSHIP_DAILY_FOOD_GAIN = 1800;
-constexpr int32 FRIENDSHIP_DAILY_GIFT_GAIN = 540;
-constexpr int32 FRIENDSHIP_IDEAL_GIFT_GAIN = 900;
-constexpr uint32 FRIENDSHIP_DAILY_RESET_INTERVAL = 86400;
-
-[[nodiscard]] char const* GetFriendshipRankName(FriendshipRank rank);
-[[nodiscard]] FriendshipRank GetFriendshipRank(int32 standing);
-
-struct FriendshipEntry
-{
-    int32 standing;
-    uint32 lastDailyFoodTime;
-    uint32 lastDailyGiftTime;
-
-    FriendshipEntry() : standing(0), lastDailyFoodTime(0), lastDailyGiftTime(0) {}
-};
-
-class FriendshipManager
-{
-public:
-    static FriendshipManager* instance()
-    {
-        static FriendshipManager instance;
-        return &instance;
-    }
-
-    bool LoadFromDB(Player* player);
-    void SaveToDB(ObjectGuid guid);
-    void Unload(ObjectGuid guid);
-
-    FriendshipEntry* GetFriendship(ObjectGuid playerGuid, uint32 npcEntry);
-    void ModifyStanding(ObjectGuid playerGuid, uint32 npcEntry, int32 amount);
-    bool UpdateDailyFoodTimer(ObjectGuid playerGuid, uint32 npcEntry);
-    bool UpdateDailyGiftTimer(ObjectGuid playerGuid, uint32 npcEntry);
-
-private:
-    std::map<ObjectGuid, std::map<uint32, FriendshipEntry>> _friendships;
-    std::mutex _mutex;
-};
-
-#define sFriendship FriendshipManager::instance()
+[[nodiscard]] char const* GetFriendlyRankName(FriendlyRank rank);
+[[nodiscard]] FriendlyRank GetFriendlyRank(int32 standing);
 
 // ============================================================================
-// Daily Quest System
+// Quest Constants
 // ============================================================================
-
-constexpr uint32 NPC_ANDI = 58708;
 
 // Tutorial gate — Learn and Grow V: Halfhill Market
-// Complete this quest to unlock your farm
 constexpr uint32 QUEST_TUTORIAL_GATE = 30257;
 
+// Server-wide daily rotation ranges
 constexpr uint32 QUEST_CROP_BASE = 32000;
-constexpr uint32 QUEST_CROP_PUMPKIN = 32000;
-constexpr uint32 QUEST_CROP_MELON = 32001;
-constexpr uint32 QUEST_CROP_LEEK = 32002;
-constexpr uint32 QUEST_CROP_SQUASH = 32003;
-constexpr uint32 QUEST_CROP_CARROT = 32004;
-constexpr uint32 QUEST_CROP_CABBAGE = 32005;
-constexpr uint32 QUEST_CROP_PINK_TURNIP = 32006;
-constexpr uint32 QUEST_CROP_WHITE_TURNIP = 32007;
-constexpr uint32 QUEST_CROP_WITCHBERRY = 32008;
-constexpr uint32 QUEST_CROP_SCALLION = 32009;
+constexpr uint8  CROP_DAILY_COUNT = 10;
 
 constexpr uint32 QUEST_ANDI_GIFT = 32010;
 
-constexpr uint32 QUEST_VISITING_BASE = 32011;
 constexpr uint32 QUEST_VISITING_CHEE_CHEE = 32011;
 constexpr uint32 QUEST_VISITING_ELLA = 32012;
 constexpr uint32 QUEST_VISITING_FUNG = 32013;
@@ -371,90 +332,16 @@ constexpr uint32 QUEST_VISITING_SHO = 32017;
 constexpr uint32 QUEST_VISITING_TINA = 32018;
 
 constexpr uint32 QUEST_KILL_BASE = 32019;
-constexpr uint32 QUEST_KILL_LESSER_EVILS = 32019;
-constexpr uint32 QUEST_KILL_STEALING = 32020;
-constexpr uint32 QUEST_KILL_STALLING = 32021;
-constexpr uint32 QUEST_KILL_HUNTER_CHIEF = 32022;
-constexpr uint32 QUEST_KILL_SIMIAN = 32023;
+constexpr uint8  KILL_DAILY_COUNT = 5;
 
+// Server-wide daily seed (based on calendar day)
+[[nodiscard]] uint32 GetTodaySeed();
+
+// Andi gift item (given by NPC 58708)
 constexpr uint32 ITEM_ANDI_GIFT = 79247;
-
-constexpr uint32 DAILY_CROP_REWARD_REP = 350;
-constexpr uint32 DAILY_ANDI_REWARD_REP = 150;
-constexpr uint32 DAILY_ANDI_FRIENDSHIP_GAIN = 1400;
-constexpr uint32 DAILY_VISITING_REWARD_REP = 150;
-constexpr uint32 DAILY_VISITING_FRIENDSHIP_GAIN = 2000;
-constexpr uint32 DAILY_KILL_REWARD_REP = 275;
-
-constexpr uint8 CROP_DAILY_COUNT = 10;
-constexpr uint8 VISITING_FARMER_COUNT = 8;
-constexpr uint8 KILL_DAILY_COUNT = 5;
-
-constexpr uint8 VISITING_FARMER_EXCLUDED[] =
-{
-    NPC_HAOHAN_MUDCLAW,
-    NPC_OLD_HILLPAW
-};
-
-struct DailyQuestData
-{
-    uint32 activeCropDaily;
-    uint32 activeKillDaily;
-    uint8 AndiGiftTarget;
-    uint8 activeVisitingFarmers[2];
-    uint32 dailyQuestsMask;
-    uint32 lastDailyReset;
-
-    DailyQuestData()
-        : activeCropDaily(0), activeKillDaily(0), AndiGiftTarget(0),
-          dailyQuestsMask(0), lastDailyReset(0)
-    {
-        activeVisitingFarmers[0] = 0;
-        activeVisitingFarmers[1] = 0;
-    }
-};
-
-class DailyQuestManager
-{
-public:
-    static DailyQuestManager* instance()
-    {
-        static DailyQuestManager instance;
-        return &instance;
-    }
-
-    bool LoadFromDB(Player* player);
-    void SaveToDB(ObjectGuid guid);
-    void Unload(ObjectGuid guid);
-
-    bool IsDailyComplete(ObjectGuid playerGuid, uint32 questId);
-    void CompleteDaily(ObjectGuid playerGuid, uint32 questId);
-    void ResetDailies(ObjectGuid playerGuid);
-
-    uint32 GetRandomCropDaily(ObjectGuid playerGuid);
-    uint32 GetRandomKillDaily(ObjectGuid playerGuid);
-    uint32 GetAndiGiftTarget(ObjectGuid playerGuid);
-    uint8 GetActiveVisitingFarmers(ObjectGuid playerGuid, uint8 index);
-
-    DailyQuestData* GetDailyData(ObjectGuid playerGuid);
-
-private:
-    std::map<ObjectGuid, DailyQuestData> _dailyData;
-    std::mutex _mutex;
-};
-
-#define sDailyQuest DailyQuestManager::instance()
 
 // Free function wrappers declared in header so all Tillers scripts can use them
 void CreatePlayerFarm(Player* player);
-
-struct CropDailyAssignment
-{
-    uint32 questId;
-    CropType crop;
-    uint8 requiredCount;
-    char const* questName;
-};
 
 // ============================================================================
 // Vote Questlines (Tilliers Union)
@@ -508,11 +395,8 @@ struct VoteData
 
 extern VoteData const VoteRequirements[5];
 
-extern CropDailyAssignment const CropDailies[CROP_DAILY_COUNT];
-
 void AddSC_tillers_friendship();
 void AddSC_tillers_shrine();
-void AddSC_tillers_dailies();
 void AddSC_npc_farmer_yoon();
 
 #endif

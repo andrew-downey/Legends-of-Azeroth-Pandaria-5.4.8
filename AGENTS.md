@@ -69,6 +69,9 @@ Three databases: `auth`, `characters`, `world` + optional `playerbots`. Base sch
 - Core files: `src/server/game/BattlePet/PetBattle.cpp`, `PetBattle.h`, `BattlePetSpawnMgr.cpp`, `BattlePetTrainerMgr.cpp`, `src/server/game/Handlers/BattlePetHandler.cpp`
 - Key rule: `HandleRound()` should NEVER auto-swap pets. Pet death swaps belong in `TurnFinished()` or via client input.
 
-## Tillers Farm System
+## ⚠️ Build Safety Rules (CRITICAL - AI Agents)
 
-- Full documentation in `TILLERS.md` — farm plot mechanics, tiller reputation, daily quests, planting/harvesting flow, and data tables.
+- **NEVER** reconfigure (cmake), rebuild the build directory, or clean the build folder without explicit user approval. The server is slow and reconfiguration wastes ~30 minutes.
+- **NEVER** start a build unless the user explicitly asks for it.
+- **ALWAYS** use `./build.sh` in the local project directory for any build operations (it handles ccache + gold linker + correct flags).
+- **ALWAYS** save database writes as SQL migration files in `sql/updates/world/` or `sql/updates/characters/` — NEVER run UPDATE/INSERT/DELETE directly against the database without having a migration file first.

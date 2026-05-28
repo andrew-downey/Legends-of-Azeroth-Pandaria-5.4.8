@@ -1,0 +1,389 @@
+Introduction
+Feeding the Tree
+
+The Tillers are Pandaria's agricultural faction. Their main settlement is Hafhill in the Valley of the Four Winds, although many of their members live in the fields north-west of Halfhill.
+
+There are 3 sets of activities related to the Tillers:
+
+    Sunsong Ranch, a farm which you gradually improve. On this farm you can grow your own crops. The quests associated with Sunsong Ranch grant reputation with the Tillers, but the main benefit of Sunsong Ranch is the ability to grow crops, including vegetables, which are used in cooking. The farm is first available at level 85, but further improvements require level 90.
+    Friendship with up to 10 specific members of the Tillers. Friendship with individual Tillers members is tracked separately from the faction as a whole. Friendship can be gained from delivering each person's favorite cooked dishes (5 of the dish, once per day), digging up rare gift items and delivering them to an appropriate friend (no limits, but the items may be hard to find), or in some cases completing their daily, world-drop or rank-triggered quests. These reward points of friendship, but most do not reward Tillers reputation. These require level 90.
+    Daily quests, all starting in Halfhill. They reward reputation with both the Tillers and (where appropriate) the friend that ends the quest. Work Orders allow reputation to be gained with other Pandaren factions. These quests require level 90.
+
+This guide is focused on the first activity, Sunsong Ranch, but also summarises the other sources of reputation, since reputation is important for developing your farm: Events triggered by higher Tillers reputation unlock extra soil patches on the Ranch, while many friends make cosmetic improvements to Sunsong Ranch, such as adding livestock or furnishing the farm's hut.
+
+Why farm?
+
+    Farming is the main source of vegetables, which are used to cook most Pandaren dishes. Vegetables can be traded.
+    Materials used in other manufacturing professions can be grown, including Mote of Harmony.
+    A chance to grow a Terrible Turnip minipet.
+    Complete Work Orders for bonus reputation with a range of Pandarian factions.
+    Your farm can be improved visually, including a small home of your own.
+    Sunsong Ranch unlocks extra Tillers reputation, whose rewards include Riding Goats.
+    Farming is surprisingly fun! And it doesn't take much time each day.
+
+The Tillers farm is popularly referred to as a "Farmville" clone, but the gameplay is probably closer to that in the Harvest Moon series. There is no direct social element to farming - no obligations between farmers, that form the backbone of Farmville. Instead there is a simple, but regular process, from preparing one's own land, to harvesting one's own crops. WoW Insider has further comparisons.
+Farming Sunsong Ranch
+
+Introductory quests for Sunsong Ranch start from Farmer Yoon at Sunsong Ranch, on the edge of Halfhill. An optional quest is available from your faction's hub city in Vale of Eternal Blossoms that sends you to farmer Yoon. These quests are available at level 85. There are no other requirements - quests can be done as soon as one sets foot in Pandaria.
+
+Farmer Yoon's "Learn and Grow" quests introduce the basic techniques of farming: Tilling the soil, planting seeds, tending to the patch, waiting for growth (skipped by the introductory quests), and finally harvesting the crop. After completing the introduction you will be able to grow whatever crops you wish.
+
+The farming process is straightforward:
+
+    Buy Seeds
+    Buy Seeds
+
+    Buy seeds for the crops you intend to grow from Merchant Greenfield (or his assistant, Milly Greenfield) at Halfhill Market. Basic seeds plant just one soil patch and are consumed on use. Seed bags plant 4 patches with the same type of crop at once, and have 10 charges (so each seed bag plants up to 40 crops in total). Initially only basic vegetable seeds are available. Other seed types are sold with higher Tillers reputation, including seeds for Blossom Trees (for show) or Special Crops (for primary profession materials).
+
+    Certain Tillers friends send you seeds once you reach their Best Friend rank. Seeds are also sometimes harvested from grown crops.
+    Till Soil
+    Till Soil
+
+    Return to Sunsong Ranch and till the soil in one of your patches of earth. Simply click the soil.
+
+    Your farm starts with 4 soil patches, each of which can grow one crop per day. As described below, the number of patches can be gradually increased, up to 16.
+    Plant Seed
+    Plant Seed
+
+    To plant basic seeds: Simply target the tilled soil patch, and click the seed to plant it. For seed bags: Use the bag, then AoE-target the set of 4 soil patches you wish to plant.
+
+    Occasionally newly planted crops will immediately grow as Bursting crops. These do not require tending or waiting for growth: The crop can be immediately harvested, then the soil tilled and replanted.
+    Tend Crop
+    Tend Crop
+
+    Tend to the newly planted crop, which is normally either Alluring, Infested, Parched, Runty, Smothered, Tangled, Wiggling or Wild. Each requires specific remedial action, described in more detail below. You can also ask Farmer Yoon for help. Actions involve using a farm tool (such as Rusty Water Can to water parched crops), or playing a brief minigame (click on the crop to start). Once tended, crops grow without further intervention.
+
+    A growing crop can be removed using the Dented Shovel, which is on the ground near the farm's hut. Removing a crop clears the soil patch for another plant, but the seed is lost.
+    Grow and Harvest
+    Grow and Harvest
+
+    Now wait... "Most crops are ready the day after they start growing," says Farmer Yoon. Crops change from Growing to Ripe (or Plump) at 03:00 (PST for US realms, CET for EU realms, and Australian EST for Oceanic realms). Crops display a "Growing" buff when targetted, which shows the amount of time remaining.
+
+    Once the crop has grown, simply click to harvest it. You can now start the whole process again - tilling, planting, and tending.
+
+    Grown crops do not need to be harvested immediately: Unharvested crops remain in their grown state, even after several days.
+
+Terrible Turnip
+
+Each successful harvest rewards 50 Tillers reputation at level 90. Below level 90, harvesting does not reward reputation. Each Ripe vegetable crop yields 5 vegetables. Rarely vegetables will grow as Plump crops, which grant an extra 3 vegetables when harvested. Harvesting crops may also yield other things:
+
+    Often, new seeds for the crop type being harvested.
+    Rarely, gift items, such as Marsh Lily, used to make friends with certain Tillers. Gifts gained below level 90 still require level 90 to deliver.
+    Very rarely, Ominous Seed, which can be replanted to grow a Terrible Turnip minipet (illustrated right).
+    Members of the Brawler's Guild may gain Paper-Covered Rock, which unlocks the Ro-Shambo Challenge Card fight. Initial reports suggest Paper-Covered Rock may not be possible to harvest from all crop types. Vegetable crops are confirmed to sometimes grant Paper-Covered Rock.
+
+Jogu the Drunk (found near the water at Halfhill Market) will make a prediction about tomorrow's vegetable crop for 25g (less with friendship, free when Best Friends). Planting Jogu's suggested crop results in crops which yield 2 extra vegetables when harvested.
+
+Harvesting crops may trigger achievements:
+
+    Green Acres - Successfully harvest your first crop (of any type).
+    A Taste of Things to Come - Successfully harvest your first Special Crop (see Seeds below).
+    Listen to the Drunk Fish - Harvest each vegetable on Jogu's high-forecast day.
+
+If you have a lot of time and money, and a dire need to harvest crops (for items or reputation) without waiting a day for growth, it is possible to continually till, plant, tend and remove crops until you gain a Bursting crop. However, there are few circumstances when this is likely to be an optimum stategy, because the chance of gaining a Bursting crop is very low - a few percent of all crops planted.
+
+Technically, each Sunsong Ranch is a phased instance unique to you. This means that only you can see your farm, since everyone else sees their own version of Sunsong Ranch. Where the factions are at war (PvP realms) your farm should be a safe haven from attack.
+Seeds and Crops
+
+Seeds, and the crops they grow, are summarised in the table below.
+Seeds and Crops Type	Basic Seed	Seed Bag	Crops Harvested
+Vegetable	Green Cabbage Seeds	Bag of Green Cabbage Seeds	Green Cabbage
+Jade Squash Seeds	Bag of Jade Squash Seeds	Jade Squash
+Juicycrunch Carrot Seeds	Bag of Juicycrunch Carrot Seeds	Juicycrunch Carrot
+Mogu Pumpkin Seeds	Bag of Mogu Pumpkin Seeds	Mogu Pumpkin
+Pink Turnip Seeds	Bag of Pink Turnip Seeds	Pink Turnip
+Red Blossom Leek Seeds	Bag of Red Blossom Leek Seeds	Red Blossom Leek
+Scallion Seeds	Bag of Scallion Seeds	Scallions
+Striped Melon Seeds	Bag of Striped Melon Seeds	Striped Melon
+White Turnip Seeds	Bag of White Turnip Seeds	White Turnip
+Witchberry Seeds	Bag of Witchberry Seeds	Witchberries
+Special Crop	Enigma Seed	Bag of Enigma Seeds	Random Pandarian herb
+Magebulb Seed	Bag of Magebulb Seeds	Spirit Dust, rarely Mysterious Essence
+Raptorleaf Seed	Bag of Raptorleaf Seeds	Exotic Leather, rarely Plump Intestines
+Snakeroot Seed	Bag of Snakeroot Seeds	Ghost Iron Ore, rarely other Pandarian ores
+Songbell Seed	Bag of Songbell Seeds	Mote of Harmony
+Windshear Cactus Seed	Bag of Windshear Cactus Seeds	Windwool Cloth
+Other**	Autumn Blossom Sapling	-	Autumn Blossom Tree
+Spring Blossom Sapling	-	Spring Blossom Tree
+Winter Blossom Sapling	-	Winter Blossom Tree
+Ominous Seed	-	Terrible Turnip minipet
+Unstable Portal Shard	-	City-specific Portal Shard (single teleport from Sunsong Ranch)
+Blossom Trees
+
+** Notes on "other" types:
+
+    Blossom trees are harvested to produce single-use items that can be used to plant the harvested tree somewhere else in the world (illustrated, from left, Spring, Autumn and Winter). Replanted trees last 3 minutes. Only one tree of each type can be replanted at a time, since the tree item has a 3 minute cooldown. Blossom trees are bound when harvested, and cannot be traded.
+    Ominous Seed does not require tending once planted.
+    Unstable Portal Shards cause an angry level 90 Rift Stalker to appear when tended, which must be defeated. Each tended shard then grows into a city-specific portal shard: Alliance farmers will gain a Portal Shard for one of Darnassus, Exodar, Ironforge or Stormwind. Horde gain shards for Orgrimmar, Silvermoon, Thunder Bluff or Undercity. The precise destination of the shard gained is random. Each shard can be used once to create a teleport-portal from Sunsong Ranch to the named city, similar to Mage-created portals.
+
+Portal shards can only be used on Sunsong Ranch, in contrast to mage portals, which can be cast almost anywhere. Non-mages can simply fly to their faction's hub town in the Vale of Eternal Blossoms and use the portals there to travel to a home city, without the extra time and effort of growing Portal Shards.
+Obtaining Seeds
+
+Vegetable, Special Crop, and Blossom Tree seeds are sold by Merchant Greenfield in Halfhill Market for a few Silver or Gold:
+
+    Basic Vegetable seeds for 15s each, at Tillers Neutral.
+    Vegetable seed bags for 4g 50s each, at Tillers Revered.
+    Basic Special Crop seeds for 1g each, at Tillers Revered.
+    Special Crop seed bags for 30g each, at Tillers Exalted.
+    Blossom Tree seeds for 10s each, at Tillers Honored for Autumn Blossom Sapling, Revered for Spring, and Exalted for Winter.
+
+If you plan to plant more than 30 crops, seed bags are cheaper than the equivalent volume of basic seeds. Seed bags are also faster to plant.
+
+Milly Greenfield, Merchant's young assistant, sells all the same types of seed bags for the price of 30 of the seed type which the bag plants. This allows excess seeds to be traded directly into seed bags.
+
+Vegetable seeds are sometimes gained while harvesting a crop - but only the seed that grows the type of crop harvested.
+
+Certain Tillers friends will send you seeds once you reach their Best Friend rank. This theoretically allows a few Special Crops and Blossom Trees to be grown before reaching the Tillers rank required to buy the seeds.
+
+Ominous Seeds cannot be purchased. The seed is very rarely (randomly) harvested alongside a vegetable crop.
+
+Unstable Portal Shards are sold by Barnaby Fletcher: First, you must be at least Revered with the Tillers, and Barnaby Fletcher must be at Halfhill Market. He only visits occasionally. Now take the quest A Shabby New Face from Merchant Greenfield. Complete Barnaby's follow-up quest by simply speaking to him. This rewards you with a free Unstable Portal Shard. Barnaby Fletcher will then sell additional Unstable Portal Shards for 3g each.
+Tending
+Sunsong Ranch
+
+Normal crops need to be labelled "growing" to grow. Newly planted crop will be in 1 of 8 other states, each of which requires remedial action:
+
+    Alluring - Defend your crop against a hostile Plainshawk, that will appear once you interact with the crop.
+    Infested - Use your Vintage Bug Sprayer (found on the ground near the hut) on the crop.
+    Parched - Use your Rusty Water Can (provided during the initial quests, or found on the ground) on the crop.
+    Runty - Interact with the crop and then Jump! ((Tap the spacebar.))
+    Smothered - Use the Pull ability, gained once you interact with the crop.
+    Tangled - Grab the tanglevines and run at least 15 yards away from the crop.
+    Wiggling - Defend your crop against a hostile Virmen, that will appear once you interact with the crop.
+    Wild - Use the Flex ability to build up 50 stacks on Dominance. Use Gnaw to interrupt attacks. Abilities are gained once you interact with the crop.
+
+These actions are simple - quick minigames or uses of an item. Once remedial action has been taken the crop should grow normally without any further intervention. Hostile creatures have the same level as you. For example, a level 85 farmer will only face level 85 Virmen.
+
+Unstable Portal Shards uniquely cause an angry level 90 Rift Stalker to appear when tended. Planted Ominous Seed do not need to be tended.
+
+Farmer Yoon will offer you tending tips, although some are quite vague.
+
+Can't find a farm tool? Tools are either in your inventory or on the ground next to the steps leading up to Sunsong Ranch's hut.
+Post-Harvesting
+
+There are two states that sometimes apply to soil after harvesting, as an extra stage between harvesting and tilling:
+
+    Occupied - Kill the virmen living in the ground, similar to Wiggling.
+    Stubborn - Use the Pull ability, similar to Smothered.
+
+When using the Earth-Slasher Master Plow (see Machinery below) on Occupied patches, Virmen will emerged stunned and at 30% health.
+Developing Sunsong Ranch
+
+There are 4 main methods by which you can improve your farm:
+
+    Tillers Union Quests: Complete a long series of quests to convince different members of the Tillers Union to let you farm. As you do so, you will also improve your farm, adding extra patches of soil that can be used to grow additional crops. These quests require Tillers reputation to unlock.
+    Ownership: Once the Tillers Union Quests have been completed, you can take ownership of Sunsong Ranch. This adds Work Order Daily Quests and allows you to bind your hearthstone to the ranch's hut.
+    Farm Machinery Quests: Gina Mudclaw sells 3 items of farm machinery. These unlock after certain improvements are made to Sunsong Ranch during the Tillers Union quests.
+    Best Friend Improvements: Many Tillers friends will automatically make small, primarily cosmetic, improvements to Sunsong Ranch once you attain their maximum rank ("Best Friend"). At Tillers Exalted you will be able to invite one Best Friend at a time to visit your farm. See Tillers Friendship below for details.
+
+You can also add a Dog to your farm via a single quest. None of Sunsong Ranch's animals or livestock can be farmed. At least, not yet.
+Tillers Union
+Gai Lan
+
+These quests gradually unlock, as you gain reputation with the Tillers. Some of these quest sequences secure votes with Tillers Union members. Others result in improvements to Sunsong Ranch. All quests start from Farmer Yoon at Sunsong Ranch. There may be a small time delay between reaching the required reputation and Yoon offering each quest, so watch Farmer Yoon carefully.
+
+The mid-rank reputation requirements listed below are approximate (within a few hundred reputation points). Use them as a rough guide only.
+
+The only repeatable sources of Tillers reputation unlock once the introductory Sunsong Ranch quests have been completed: Daily quests (summarised at the bottom of this guide) and harvesting crops. Daily quests with the Tillers require level 90. While farmers below level 90 can harvest crops, harvesting only grants Tillers reputation for those at level 90.
+
+At Revered Gina Mudclaw sells a Grand Commendation of the Tillers. Once used, the Commendation doubles reputation gains for all farmers ((sharing the same account)). This reputation bonus applies both to you between Revered and Exalted, and to other farmers from Neutral. The bonus only applies to the main Tillers faction, not individual friends (described later).
+
+Can't find a Tiller? Many members of Tillers that live on outlying farms make visits to Halfhill Market. If you cannot find them at their farm, look for them at Market.
+
+0/12,000 Honored - Gina Mudclaw's Vote: Gina Mudclaw is based in Halfhill Market. Plant and harvest Scallion Seeds, then deliver 5 Scallions to Gina. You will normally need to wait a day for the crops to grow before the quest can be completed.
+
+Farmer Yoon will now start to offer a daily planting quest (requires level 90): Just plant his choice of vegetable - there is no need to wait for growth. Yoon will also mail you a package containing 4 vegetable seeds.
+Fish Fellreed
+
+0/12,000 Honored - Gai Lan's Improvement: Gai Lan farms (weeds, mostly) north-west of Halfhill. Gather 6 Spideroot from the ground nearby. He will then visit Sunsong Ranch to clears weeds. Weed clearance takes 15 minutes, during which time Gai Lan can be seen at work on your farm (illustrated left). Once weed clearance is complete, your Ranch will gain an extra 4 soil patches, allowing you to cultivate a total of 8 crops at once. You may need to briefly leave and return to Sunsong Ranch to see the result of the weed clearance.
+
+5,500/12,000 Honored (approximately) - Mung-Mung's Vote: Mung-Mung is on the farm to the north of Halfhill. Collect 10 Partially Chewed Carrots from the ground nearby. Then plant and harvest 2 Juicycrunch Carrot Seeds, and deliver 10 Juicycrunch Carrot to Mung-Mung.
+
+0/21,000 Revered - Fish Fellreed's Improvement: Fish Fellreed is either standing on a pier in Cattail Lake or in Halfhill Market. Collect 100 Waxed Planks from the bottom of the lake. These cannot be caught by fishing. Fish Fellreed then spends the next 15 minutes hammering away at the broken cart on Sunsong Ranch (illustrated), eventually adding another 4 soil patches (total 12).
+
+Around now, more seeds will arrive in the mail from Farmer Yoon.
+
+4,000/21,000 Revered (approximately) - Farmer Fung's Vote: Farmer Fung lives on a farm north of Halfill, but also visits Halfill Market. Round up 5 of his Escaped Shagskin Yaks, which are in the meadow north-west of Halfhill. Mount each Yak and ride it into the pen at the north end of the meadow (similar to the Yak Wash quest in Kun-Lai Summit). Then plant and harvest 3 Green Cabbage Seeds, and deliver 15 Green Cabbage to him.
+Haohan and Thunder
+
+8,500/21,000 Revered (approximately) - Nana Mudclaw's Vote: Nana Mudclaw lives in a hut in the center of Halfhill. Fill the pitcher provided with Thousand-Year Water at the Golden Falls directly north of Halfhill. The pitcher can only be filled at the top of the falls, which requires personal flight to reach. The location is guarded by a hostile Water Spirit. Then plant and harvest 3 Witchberry Seeds, and deliver 15 Witchberries to Nana.
+
+16,800/21,000 Revered (approximately) - Haohan Mudclaw's Vote: Haohan Mudclaw lives on a farm north-west of Halfhill, but also visits Halfill Market. First investigate 8 footprints, found on the ground around a deserted farm in the middle of The Heartland. Next gather 4 ingredients from Springtail Crag, on the northern cliffs: Violet Lichen from outside the caves, and Bloodbloom, Cave Lily and Ghostcap, each found inside separate caves. Finally plant and harvest 4 Striped Melon Seeds, and deliver 20 Striped Melon to Farmer Yoon.
+
+20,000/21,000 Revered (approximately) - Haohan Mudclaw's Finale: The final stage of Haohan Mudclaw's vote involves killing Chief Yip-Yip, who is found in a cave at the north end of the Skyrange. Use the Melon (visible once the fight starts) to interupt Yip-Yip's special attack. Completing this quest earns Exalted with the Tillers. The voting members now gather at Sunsong Ranch and invite you to mark your membership on the farm's shrine.
+
+0/999 Exalted - Haohan Mudclaw's Improvement: Simply speak to Haohan, and he will visit your farm with Thunder, a Mushan who will bull-doze the large boulder on Sunsong Ranch. After 15 minutes work the boulder will be cleared, allowing you to farm the final 4 soil patches (total 16).
+
+Farmer Yoon will send you another pack of seeds in the mail. You will also prompted (by a quest) to hire a Best Friend to work on your farm - although they don't seem to do much - see Tillers Friendship below.
+Ownership
+
+Once you have completed the Tillers Union questline (with all 16 plots unlocked), take the quest Inherit the Earth, which starts from Nana Mudclaw in Halfhill. Then simply talk to Farmer Yoon and persuade him to take up a new job with the Tillers Union. Farmer Yoon leaves your ranch and moves to Halfhill Market, where he continues to offer daily quests (and farming advice, if you still need it).
+
+Ownership of Sunsong Ranch:
+
+    Unlocks Work Orders: Daily plant-and-harvest quests that grant reputation with a range of Pandarian factions - see Daily Quests below.
+    Adds a "Farmer's Journal" to the floor of your hut, which you can bind your hearthstone to. The hut functions as an inn, allowing immediate log-out.
+
+Farm Machinery
+Jinyu Princess
+
+Gina Mudclaw sells 3 items of farm machinery. Each is sold for 100g, once the required improvement has been completed. To install the machinery simply start the item's quest and talk to Farmer Yoon. You may need to leave your Ranch briefly to make the changes visible:
+Jinyu Princess Irrigation System
+
+    "An installation kit for a sprinkler system. This can be installed at Sunsong Ranch"
+    Requires: Weeds cleared from Sunsong Ranch (Gai Lan's improvement)
+
+The "Jinyu Princess" adds a pair of large silver barrels of water to one end of each set of 8 soil patches. Each barrel has a bamboo sprinkler head, which can be activated to pour water over all 8 soil patches at once (illustrated right). This instantly tends any Parched crops.
+
+This Irrigation System only has a slight advantages over using regular a Rusty Water Can, since typically only 1 soil patch in 8 will contain a Parched crop. The main benefit is in not having to search your bags for the Can.
+Thunder King
+Thunder King Pest Repellers
+
+    "An installation kit for a ultrasonic pest repellers. This can be installed at Sunsong Ranch"
+    Requires: Broken wagon fixed at Sunsong Ranch (Fish Fellreed's improvement)
+
+The "Thunder King" adds a small mechanical device to the center of both sets of 8 soil patches. Activating its cogs causes a surge of energy, that instantly tends any Infested crops (illustrated left).
+
+Like the Jinyu Princess, these Pest Repellers grant little benefit over using regular a Vintage Bug Sprayer, because typically few crops are Infested when planted.
+Earth-Slasher Master Plow
+
+    "An assembly kit for a large plow. This can be used to till a line of soil in Sunsong Ranch"
+    Requires: Mossy boulder removed from Sunsong Ranch (Haohan Mudclaw's improvement)
+
+Earth-Slasher
+
+The "Earth-Slasher" adds a plough to Sunsong Ranch, which can be picked up and placed in your bags. Position yourself at the end of one row of 4 soil patches, then use the plow to push it over all 4 soil patches, tilling any untilled soil (illustrated right). When using the Earth-Slasher Master Plow over "Occupied" patches of soil, Virmen will emerged stunned and at 30% health.
+
+As Farmer Yoon says, this is going to be awesome! Perhaps one day the gnomes will invent an automated plow, that doesn't need someone to push it manually... Of course we'd need bigger fields to justify that investment, hence a revolution in Pandaren land ownership... And eventually the whole of Pandaria could be cultivated by one greedy goblin mega-corporation! Oh... maybe I should just keep fishing?
+Lost Dog
+
+In the south center of the Heartlands, west of Halfhill, you may find a Lost Dog with a quest. The dog (and quest) first appears at about 12,600/21,000 Revered with The Tillers (thanks Matt). Simply collect 20 Tasty T-Bones from Mushan in the Skyrange. The animal will then run back to Sunsong Ranch as a level 90 "Dog", and sit patiently next to Farmer Yoon.
+
+Further farm pets and animals can be gained via Tillers friends.
+Tillers Friendship
+
+Like Nat Pagle and Nomi, 10 members of the Tillers have friendship bars. Friendship is earned individually. It is seperate from Tillers reputation overall, even though all the people you can make friends with are also Tillers.
+Old Hillpaw's Friendship
+
+Your current friendship with a person is shown by a progress bar next to a heart, which is displayed at the top of the dialogue box when you talk to them (illustrated). Friendship progresses from 0 to 42,999, through a series of five 8400-point ranks, with the 6th rank gained at 42,000. These ranks are called Stranger, Acquaintance, Buddy, Friend, Good Friend, and Best Friend. Your current friendship rank with each person is also displayed at the Tillers Shrine in Sunsong Ranch.
+Friends Overview
+Map of Tillers Friends
+
+Friend locations are shown on the map, right. Gina Mudclaw (at Halfhill Market) will mark the location of each person on your map if you ask her to. However many friends that live on outlying farms will make visits to Halfhill Market. Some, like Tina Mudclaw, will leave a note. Others just wander.
+
+There are three methods of gaining friendship. All these methods require level 90:
+
+    Feed the friend their favourite meal: Deliver 5 of their favorite dish, once per day.
+    Bring them a gift: Gifts are found in piles of Dark Soil, which appear randomly across The Heartland north-west of Halfhill. Each gift item is especially desired by two friends.
+    For some friends, complete their quests: Quests are either dailies which end at the friend, or regular (one-off) quests that unlock when you reach a certain rank of friendship, or quests that start from drops.
+
+Friends, with their favourite meals and preferred gifts, are listed below:
+Tillers Friendship Friend	Favorite Meal (x5)	Perfect Gift
+Chee Chee	Valley Stir Fry	Blue Feather
+Ella	Shrimp Dumplings	Jade Cat
+Farmer Fung	Wildfowl Roast	Marsh Lily
+Fish Fellreed	Twin Fish Platter	Jade Cat
+Gina Mudclaw	Swirling Mist Soup	Marsh Lily
+Haohan Mudclaw	Charbroiled Tiger Steak	Ruby Shard
+Jogu the Drunk	Sauteed Carrots	Lovely Apple
+Old Hillpaw	Braised Turtle	Blue Feather
+Sho	Eternal Blossom Fish	Lovely Apple
+Tina Mudclaw	Fire Spirit Salmon	Ruby Shard
+
+Hozen Peace Pipe, which grants reputation with most factions in Pandaria, does not increase reputation with friends. The Pipe can be used to gain Tillers reputation.
+Friendship Quests
+Dark Soil
+
+Friends' quests for meals will only be offered if you have at least 5 of the relevant dish in your inventory. All the required dishes can be cooked. Meal quests can only be completed once per day. Feeding earns 1,800 friendship.
+
+Gifts are found in piles of Dark Soil (illustrated). These appear as small mounds of soil, almost anywhere the Tillers are farming north-west of Halfhill, plus a few possible mound locations on the Skyrange and nearby cliffs. These mounds cannot be tracked on the minimap, which can make them hard to spot, especially when the weather is gloomy. Gifts bind when picked up, so cannot be traded. All friends will accept all gifts - even gifts they don't especially like. You must decide who gets which gift. Desired gifts earn 900 friendship each. Other gifts earn 540 friendship. Gift quests are repeatable: Turn in as many gifts as you can find.
+
+Friends may offer extra quests that reward their friendship, in addition to meals and gifts. Friendship gains from these quests are substantial - typically 2-4,000 friendship. There are 3 types of extra quests. Not all friends offer all types of quest:
+
+    Daily quests which end at the friend: These are Tillers daily quests, described below. All friends gain friendship via certain daily quests, but most of these quests are only available occasionally.
+    Regular (one-off) quests that that unlock when you reach a certain rank of friendship:
+        Chee Chee repeatedly sends you out to rescue his lost Sheepie (a cameo of Nagrand's Corki).
+        Ella asks you take her home-brew to various Pandaren around Halfhill, culminating in Chen Stormstout.
+        Jogu the Drunk makes a series of requests for drinks: Four Wind Soju, then 5 Plum Wine, 10 Jade Witch Brew, and finally 20 Mad Brewer's Breakfast. Jogu's final quest requires a lot of ingredients to cook, but also rewards enough friendship to complete his final rank in a single quest.
+        Sho offers a couple of quests to kill hostile wildlife.
+    Quests that start from world drops and end at the friend: Several items start quests that award friendship with Tina Mudclaw - Beautiful Brooch, Exquisite Earring, Nice Necklace and Tasteful Tiara. These items drop from creatures in the Skyrange and nearby cliffs, the elevated area north-west of Halfhill. The drops are bound and cannot be traded.
+
+The extra quests make certain friends faster to gain friendship with. For this reason those attempting to gain any one friend quickly should focus on Jogu the Drunk, since he offers the greatest amount of reputation from extra quests. Of course different friends offer different rewards, some of which will appeal to some farmers more than others:
+Friendship Rewards
+Piggy and Shaggy
+
+There is an achievement for becoming Best Friends (the highest rank of friendship) with any one Tillers friends, and also Best Friends with all 10 friends.
+
+Specific rewards from friends are often rather personal. Best Friends will make (primarily cosmetic) improvements to Sunsong Ranch and/or send you something in the mail that reflects their interests. At the highest "Best Friend" rank:
+
+    Chee Chee: Adds 4 level 90 "Farm Sheep" to Sunsong Ranch. Mails a Goodie Bag containing 20 Windwool Cloth and 5 Exotic Leather.
+    Ella: Adds a cat named "Luna" to Sunsong Ranch. Mails a Tree Seed Pack containing 3 Blossom Tree seeds (Autumn, Spring and Winter).
+    Farmer Fung: Adds a prized level 90 Yak, "Shaggy", to Sunsong Ranch. Mails an Enigma Seed.
+    Fish Fellreed: Adds 3 pink level 90 "Piggys" to Sunsong Ranch. Mails a Special Seed Pack containing several Special Crop seeds (one of each seed, except Enigma Seed).
+    Gina Mudclaw: Adds a Mailbox to Sunsong Ranch. Mails a Celebration Gift containing several fireworks.
+    Haohan Mudclaw: Adds "Miss Fifi", a level 86 Mushan to Sunsong Ranch. Mails 3 Songbell Seeds.
+    Jogu the Drunk: No longer charges to make predictions about tomorrow's crops. Mails a set of drinks.
+    Old Hillpaw: Adds "Hillpaw's Chickens" (critters) to Sunsong Ranch. Mails a Straw Hat (a Pandaren style hat, similar to the hat Old Hillpaw wears).
+    Sho: Apparently adds an orange tree to Sunsong Ranch (which does not grow fruit). Mails a Chirping Package containing a Red Cricket minipet.
+    Tina Mudclaw: Adds furniture to Sunsong Ranch's hut. Mails you some cooked food.
+
+The livestock added to Sunsong Ranch are friendly and so cannot be harvested... at least not yet. In addition to the animals listed above, a Dog can be added to the Ranch via a single quest - see Lost Dog above.
+
+Tina Mudclaw's upgrade adds a stove for cooking, a comfy Pandaren bed, table, and various fittings to your hut, as shown below. Finally a house one can call one's own!
+Sunsong Ranch Furnished Hut
+
+With Tillers Exalted, Best Friends can be hired to visit Sunsong Ranch. Simply speak to a Best Friend. Only one friend can visit at a time. There are few obvious benefits: Jogu the Drunk's planting advice is available without wandering across Halfhill Market. Gina Mudclaw effectively adds a vendor to Sunsong Ranch. Other friends just appear to stand there.
+Daily Quests
+
+Once the introductory Sunsong Ranch quests have been completed several daily quests unlock. All these start from quest-givers in Halfhill, most in Hafhill Market.
+Tillers Dailies
+
+Daily quests are the only standard repeatable method of gaining reputation with the Tillers except harvesting crops. About a thousand reputation (before perks) can be gained each day from quests. Exalted will take several weeks of regular questing and farming.
+
+Several members of the Tillers offer daily quests. These quests require level 90. They reward reputation with the Tillers. If the person ending the quest has a friendship bar quests also reward points of friendship. Each day:
+
+    Farmer Yoon offers a daily quest to plant one vegetable at Sunsong Ranch. You do not need to harvest the crop, just plant it. The precise vegetable varies from day to day.
+    Andi offers a daily quest to bring "a gift" to one (selected by him at random) Tiller friend. These items are specific to the daily quest - they are not the same as the gifts discovered in Dark Soil (described above).
+    3 other randomised daily quests. These generally (but not exclusively) take place in the elevated lands north and north-west of Halfhill, so most require flight to complete. Most involve killing or collecting something, although there are some unusual quests, such as a repeat of Gai Lai's original (leveling) quest to destroy 100 "weeds".
+
+In addition to reputation, daily quests reward 1 Lesser Charm of Good Fortune and 5 Valor Points (except Farmer Yoon's planting quest, which does not reward Valor Points). 90 Lesser Charm of Good Fortune can be turned in at your faction's city in Vale of Eternal Blossoms for 3 Elder Charm of Good Fortune, which are used in dungeons to improve the loot gained from a dead boss.
+Tillers reputation doesn't just help farm! Other rewards are sold by the Tillers Quartermaster, Gina Mudclaw, including:
+
+    3 Riding Goat mounts (in Black, Brown and White) at Exalted.
+    Pandaren Scarecrow at Revered, which can be placed anywhere in the world (on a 5 minute cooldown). Unfortunately it isn't terribly effective - on one arm perches a "Cocky Crow"!
+    Gin-Ji Knife Set at Exalted, which can be used on any "fresh humanoid or beast corpse". This results in a small pile of meat which can be looted, for (apparently) extra vendor trash. The knife has a 20 minute cooldown, leading to speculation that rarely the pile of meat will include something exceptional.
+    Recipes for Spicy Salmon and Spicy Vegetable Chips at Exalted.
+    Mourning Glory at Exalted, of which "it is said these flowers will bloom over the graves of those who carry them."
+
+At Revered Grand Commendation of the Tillers can be bought and used once to double reputation gains for all farmers (sharing the same account). This reputation bonus applies both to you between Revered and Exalted, and to other farmers from Neutral. The bonus only applies to the main Tillers faction, not individual friends.
+
+At Tillers Exalted (and possibly also Best Friends with everyone - unconfirmed) you will be able to complete the quest to recover Old Man Thistle's lost treasure: Kill the Enormous Cattail Grouper in Cattail Lake to loot an Old Map. Then follow the chain of quests the map starts. The treasure consists of a selection of rare-quality uncut gems. Completing the quest-line also rewards the achievement, Ain't Lost No More.
+Cooking Daily
+
+In addition, one (at random) of the Cooking Way Trainers in Halfhill Market offers a daily cooking quest. This rewards +1 cooking skill point, 1 Lesser Charm of Good Fortune, 1 Ironpaw Token, and 5 Valor Points, but no reputation bonuses. The quest's skill bonus only applies to your cooking skill in general - it does not contribute to your skill in any Way.
+
+This cooking daily quest is not technically a Tillers quest, but unlocks with the Tillers dailies and tends to take place in the same area of the map as the Tillers quests.
+
+Too much veg' in your bags? Buy a Portable Refrigerator from Nam Ironpaw for 10 Ironpaw Tokens. This 32-slot bag contains raw meat, fish and vegetables, and cooked foods.
+Work Orders
+
+Once you own Sunsong Ranch (see Developing Sunsong Ranch above), several Pandarian factions may offer daily Work Orders. These are displayed on a post outside Sunsong Ranch's hut. Each Work Order is a 2-part daily quest, to first plant 8 of a named crop, then harvest and deliver 40 grown vegetables to a set of collecting boxes near your ranch's mailbox. Delivery rewards 300 reputation (plus bonuses) with the appropriate faction. Since each faction's quests occupy 8 of Sunsong Ranch's soil patches, only 2 sets of Work Orders may be completed each day.
+
+Work Orders are only offered to farmers with:
+
+    All 16 soil patches unlocked (via Tillers Union quests). This requires level 90.
+    Ownership of Sunsong Ranch.
+    The relevant faction's dailies unlocked.
+
+Factions that offer Work Orders are:
+
+    August Celestials - Striped Melon
+    Dominance Offensive (Horde only) - Red Blossom Leek
+    Golden Lotus - White Turnip
+    Kirin Tor Offensive (Alliance only) - Juicycrunch Carrot
+    Klaxxi - Mogu Pumpkin
+    Operation: Shieldwall (Alliance only) - Witchberries
+    Shado-Pan - Green Cabbage
+    Sunreaver Onslaught (Horde only) - Scallions
+
+Initially, you would automatically receive the second quest of each Work Order as soon as you had completed the first quest in the sequence. If you attempted the same faction's Work Order 2 days in a row, you would not gain the second (harvesting) part of the quest sequence until the following day (Sapperwix explains why). That has been altered so that, "you'll receive the quest when you start harvesting your plants, or when you interact with the drop-off crate."

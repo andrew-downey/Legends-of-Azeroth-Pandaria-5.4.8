@@ -183,6 +183,7 @@ void PlayerMenu::ClearMenus()
 {
     _gossipMenu.ClearMenu();
     _questMenu.ClearMenu();
+    _friendFactionId = 0;
 }
 
 void PlayerMenu::SendGossipMenu(uint32 titleTextId, ObjectGuid objectGUID) const
@@ -275,7 +276,7 @@ void PlayerMenu::SendGossipMenu(uint32 titleTextId, ObjectGuid objectGUID) const
     data.WriteByteSeq(guid[2]);
     data.WriteByteSeq(guid[6]);
     data.WriteByteSeq(guid[4]);
-    data << int32(0);                                       // friend faction ID?
+    data << int32(_friendFactionId);                        // friend faction ID
     data.WriteByteSeq(guid[7]);
     data << int32(titleTextId);
 

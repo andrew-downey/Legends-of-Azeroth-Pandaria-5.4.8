@@ -731,6 +731,16 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     PrepareStatement(CHAR_DEL_BATTLEGROUND_STATS, "DELETE FROM character_battleground_stats WHERE guid = ?", CONNECTION_ASYNC);
 
     PrepareStatement(CHAR_UPD_CHAR_LAST_LOGIN, "UPDATE characters SET last_login = UNIX_TIMESTAMP() WHERE guid = ?", CONNECTION_ASYNC);
+
+    // Tillers farm system
+    PrepareStatement(CHAR_DEL_PLAYER_FARM_PLOTS, "DELETE FROM player_farm_plots WHERE guid = ?", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_INS_PLAYER_FARM_PLOT, "INSERT INTO player_farm_plots (guid, plot_id, state, seed_entry, needs_watering, has_pests, maturity_timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_UPD_PLAYER_FARM_STATE, "UPDATE player_farm_state SET farm_phase = ?, plots_unlocked = ?, last_growth_tick = ? WHERE guid = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_UPD_PLAYER_FARM_PLOT_PLANT, "UPDATE player_farm_plots SET state = ?, seed_entry = ?, needs_watering = ?, has_pests = ?, maturity_timestamp = ? WHERE guid = ? AND plot_id = ?", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_UPD_PLAYER_FARM_PLOT_RESET, "UPDATE player_farm_plots SET state = ?, seed_entry = ?, needs_watering = ?, has_pests = ?, maturity_timestamp = ? WHERE guid = ? AND plot_id = ?", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_UPD_PLAYER_FARM_PLOT_WATER, "UPDATE player_farm_plots SET needs_watering = ? WHERE guid = ? AND plot_id = ?", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_UPD_PLAYER_FARM_PLOT_PESTS, "UPDATE player_farm_plots SET has_pests = ? WHERE guid = ? AND plot_id = ?", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_UPD_PLAYER_FARM_PLOT_REPAIR, "UPDATE player_farm_plots SET state = ?, seed_entry = ? WHERE guid = ? AND plot_id = ?", CONNECTION_SYNCH);
 }
 
 CharacterDatabaseConnection::CharacterDatabaseConnection(MySQLConnectionInfo& connInfo, ConnectionFlags connectionFlags) : MySQLConnection(connInfo, connectionFlags)

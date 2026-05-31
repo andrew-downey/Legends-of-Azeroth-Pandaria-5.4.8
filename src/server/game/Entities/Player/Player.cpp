@@ -15630,6 +15630,11 @@ void Player::SendPreparedGossip(WorldObject* source)
     if (uint32 menuId = PlayerTalkClass->GetGossipMenu().GetMenuId())
         textId = GetGossipTextId(menuId, source);
 
+    // Set friendship reputation faction for gossip menu
+    if (Creature const* creature = source->ToCreature())
+        if (FactionTemplateEntry const* factionTemplate = creature->GetFactionTemplateEntry())
+            PlayerTalkClass->SetFriendFactionId(factionTemplate->faction);
+
     PlayerTalkClass->SendGossipMenu(textId, source->GetGUID());
 }
 

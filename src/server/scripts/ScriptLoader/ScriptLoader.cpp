@@ -1035,6 +1035,12 @@ void AddSC_boss_oondasta();
 void AddSC_boss_nalak();
 void AddSC_boss_sha_of_anger();
 
+// Tillers of the Valley farming system
+void AddTillersZoneHooks();
+void AddTillersSoilScript();
+void AddTillersWorkstation();
+void AddTillersCommands();
+
 // Pets
 void AddSC_generic_pet_scripts();
 void AddSC_priest_pet_scripts();
@@ -1126,9 +1132,11 @@ void AddCommandScripts()
     AddSC_ticket_commandscript();
     AddSC_titles_commandscript();
     AddSC_warden_commandscript();
-    AddSC_wp_commandscript();
+   AddSC_wp_commandscript();
     AddSC_mmaps_commandscript();
     AddSC_ahbot_commandscript();
+    // Tillers of the Valley commands
+    AddTillersCommands();
 }
 
 void AddWorldScripts()
@@ -2081,6 +2089,10 @@ void AddPandariaScripts()
     AddSC_townlong_steppes();
     AddSC_vale_of_eternal_blossoms();
     AddSC_valley_of_the_four_winds();
+    // Tillers of the Valley farming system
+    AddTillersZoneHooks();
+    AddTillersSoilScript();
+    AddTillersWorkstation();
     AddSC_dread_wastes();
     AddSC_timeless_isle();
     AddSC_wandering_island_east();

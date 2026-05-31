@@ -63,6 +63,18 @@ Code standards (`doc/code_standards.md`): Oracle/Sun style, 4-space indent, no t
 
 Three databases: `auth`, `characters`, `world` + optional `playerbots`. Base schemas in `sql/base/`, incremental updates in `sql/updates/`.
 
+**⚠️ Always confirm things in the database with `mysql -uread -pread` before making changes or assumptions.**
+
+## Blizzlike Design Philosophy
+
+The goal is to be as close to retail WoW 5.4.8 (Blizzlike) as possible. When implementing features, fixing mechanics, or making design decisions:
+
+- **Match retail behavior** — client version, spell data, NPC behavior, loot tables, and combat formulas should align with Pandaria 5.4.8 retail as the source of truth.
+- **Prioritize DBC/DB data over hardcoded logic** — prefer correcting database entries (DBC, creature_template, spell_dbc, etc.) rather than patching around bad data in C++ code.
+- **Reference public sources** — use tools like WoWWiki, Wowpedia, and retail packet/spell dumps to verify mechanics when documentation is ambiguous.
+- **Avoid custom content or balance changes** — do not introduce homebrew mechanics, adjusted DPS numbers, or altered difficulty unless explicitly requested. This is a replication project, not a private server with custom features.
+- **When in doubt, match the client** — if behavior differs from retail but matches what the 5.4.8 client expects (including intentional bugs or quirks), preserve it and document the deviation.
+
 ## Pet Battle System
 
 - Full documentation in `PETBATTLES.md` — battle flow, key design principles, fixes applied, current state

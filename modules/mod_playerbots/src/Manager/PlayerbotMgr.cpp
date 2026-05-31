@@ -1303,9 +1303,10 @@ PlayerbotAI* PlayerbotsMgr::GetPlayerbotAI(Player* player)
     {
         return nullptr;
     }
-    // if (player->GetSession()->isLogingOut() || player->IsDuringRemoveFromWorld()) {
-    //     return nullptr;
-    // }
+    if (player->IsDuringRemoveFromWorld() || (player->GetSession() && player->GetSession()->isLogingOut()))
+    {
+        return nullptr;
+    }
     auto itr = _playerbotsAIMap.find(player->GetGUID());
     if (itr != _playerbotsAIMap.end())
     {
@@ -1319,6 +1320,10 @@ PlayerbotAI* PlayerbotsMgr::GetPlayerbotAI(Player* player)
 PlayerbotMgr* PlayerbotsMgr::GetPlayerbotMgr(Player* player)
 {
     if (!(sPlayerbotAIConfig->enabled) || !player)
+    {
+        return nullptr;
+    }
+    if (player->IsDuringRemoveFromWorld() || (player->GetSession() && player->GetSession()->isLogingOut()))
     {
         return nullptr;
     }

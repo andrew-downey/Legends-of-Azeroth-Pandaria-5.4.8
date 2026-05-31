@@ -352,5 +352,8 @@ class PlayerMenu
         GossipMenu _gossipMenu;
         QuestMenu  _questMenu;
         WorldSession* _session;
+        uint32 _friendFactionId = 0;
+    public:
+        void SetFriendFactionId(uint32 id) { _friendFactionId = id; }
 };
 #endif

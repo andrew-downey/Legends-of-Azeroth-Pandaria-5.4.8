@@ -1,0 +1,302 @@
+unsong Ranch
+Sunsong Ranch.
+
+Sunsong Ranch is a farmstead found in western Halfhill, in central Valley of the Four Winds. Farmer Yoon inherited the property from his grandfather around the time of the parting of the mists around Pandaria. Yoon partners with one of the continent's newcomers to restore the land and equipment, bringing it up to par with neighboring operations, ultimately joining The Tillers himself and ascending to their council. The supernaturally rapid growth of crops at the ranch is characteristic of the entire Valley, where the magical golden waters flowing down from the Vale of Eternal Blossoms make the area the breadbasket of Pandaria.
+
+Sunsong Ranch is the site of a unique crop farming mechanic developed for Mists of Pandaria, and the first area in the game to use phasing technology to give players a personal, semi-customizable space in the game world. This concept would subsequently evolve into the garrison of Warlords of Draenor and ultimately player housing. Through quest and reputation progression, players upgrade the features on their farm, and can choose for themselves what crops to plant every day and which NPC to spend time with at the ranch. Basic vegetables harvested at the ranch can be sold, used for cooking, or delivered to the various factions of Pandaria for reputation. More unusual crops produce trade goods for other professions, and the rarest can even result in magical portals or an animated vegetable companion.
+
+Farming quests and mechanics were not included in Mists of Pandaria: Remix.
+Contents
+
+    1 Quests
+        1.1 Introduction
+        1.2 Growing the farm
+        1.3 Daily quests
+            1.3.1 Work order quests
+    2 Farming
+        2.1 The daily cycle
+        2.2 Seeds
+        2.3 Tilling
+        2.4 Planting
+        2.5 Harvesting
+        2.6 Bonus crops
+        2.7 Achievements
+    3 Ranch progress and customization
+    4 Development
+    5 Patch changes
+    6 References
+    7 External links
+
+Quests
+
+    Main article: Tillers#Quests
+
+Farmer Yoon provides all the quests at Sunsong Ranch, which are all part of the extensive Tillers quest chain. The chain is divided into about nine mini-quest chains at various reputation levels. The "Learn and Grow" introductory sequence unlocks the initial features of the farm. Three "Growing the Farm" segments result in unlocking more plots of soil for planting, as well as additional farming tools purchasable from Gina Mudclaw. Most other short quest sequences see Farmer Yoon looking for favorable votes from Tillers council members, ending with growing a specific crop for them.
+
+The "Learn and Grow" intro quests are listed below, as are the ones which expand or add features to the farm. For all other quests in the chain, see the Tillers page.
+Introduction
+
+The first quest chain teaches players farming mechanics and should take characters from neutral to friendly standing with the Tillers.
+Sunsong Ranch - Friendly with Tillers.
+
+    N [15-35] A Helping Hand
+    N [15-35] Learn and Grow I: Seeds
+    N [15-35] Learn and Grow II: Tilling and Planting
+    N [15-35] Learn and Grow III: Tending Crops
+    N [15-35] Learn and Grow IV: Harvesting
+    N [15-35] Learn and Grow V: Halfhill Market
+        Dailies now available
+    N [15-35] Learn and Grow VI: Gina's Vote
+
+After harvesting, the first four plots of soil are made available.
+Growing the farm
+
+Three quests to expand the farm, with four more plots of soil each, can be completed after short chains at each major Tillers reputation level. Each expansion is subject to a 15-minute delay as an NPC completes their work in the field; this is tracked by a buff which only progresses while logged in. After the expansion, a new farming tool becomes purchasable from Gina Mudclaw. The key progress points are:
+
+    At Honored, N [15-35] Growing the Farm I: The Weeds — eight plots total &  ["Jinyu Princess" Irrigation System]
+    At Revered, N [15-35] Growing the Farm II: The Broken Wagon — twelve plots total &  ["Thunder King" Pest Repellers]
+    At Exalted, N [15-35] Growing the Farm III: The Mossy Boulder — all sixteen plots &  ["Earth-Slasher" Master Plow]
+
+After the final plots of soil are unlocked, Nana Mudclaw offers N [15-35] Inherit the Earth, which sees Farmer Yoon promoted to the Tillers council. He leaves Sunsong Ranch in the hands of the player character, who is free to continue farming as they see fit.
+
+    Sunsong Ranch - Honored with Tillers.
+    Sunsong Ranch - Honored with Tillers.
+    Sunsong Ranch - Revered with Tillers.
+    Sunsong Ranch - Revered with Tillers.
+    Sunsong Ranch - Thunder charging to destroy the boulder.
+    Sunsong Ranch - Thunder charging to destroy the boulder.
+    The fully upgraded ranch.
+    The fully upgraded ranch.
+
+Daily quests
+
+Until the player takes ownership of the ranch with N [15-35] Inherit the Earth, Farmer Yoon offers a quest each day to plant just one of a randomly chosen crop. The crop is always one of the ten standard plants, and is not related to the daily bonus crop system. Simply planting a single seed of the correct type will satisfy Yoon, earning 350 Tillers reputation. See the Tillers daily quests for a full list.
+The Work Orders post.
+
+After taking over the farm, a post appears in Farmer Yoon's former spot listing work orders to produce and deliver crops for most Mists of Pandaria factions unlocked by the adventurer. Each faction has its own crop which it always requests. All are available each day, but the capacity of the field limits the possibilities to at most two per day.
+
+Each faction's quests form a pair, the first requiring planting and the second requiring harvesting 8 seeds of a particular vegetable. Actual planting and harvesting is required, so it is not possible to bypass the field's capacity by planting and then destroying and replanting crops,[1] nor to complete orders by purchasing crops from other players. Part II is turned in at the Empty Crate on a wagon immediately southwest of the field, where an NPC of the appropriate faction picks it up. This rewards 400 base reputation with that faction, among other typical rewards.
+
+The quantity required for delivery is based on the standard harvest amount, so bonus crops can be retained for sale or cooking by the farmer.
+Work order quests
+
+    N [15-35] Work Order: The August Celestials I (and II) — Requires  [Striped Melons]
+    N [15-35] Work Order: Golden Lotus I (and II) — Requires  [White Turnips]
+    N [15-35] Work Order: The Klaxxi I (and II) — Requires  [Mogu Pumpkins]
+    N [15-35] Work Order: Shado-Pan I (and II) — Requires  [Green Cabbage]
+    A [15-35] Work Order: Operation: Shieldwall I (and II) — Requires  [Witchberries]
+    A [15-35] Work Order: Kirin Tor Offensive I (and II) — Requires  [Juicycrunch Carrots]
+    H [15-35] Work Order: Dominance Offensive I (and II) — Requires  [Red Blossom Leeks]
+    H [15-35] Work Order: Sunreaver Onslaught I (and II) — Requires  [Scallions]
+
+Farming
+
+Farming is essentially its own minigame with some fairly detailed unique mechanics, although it occasionally includes light combat using standard class abilities. Players can visit the farm daily to reap the harvest from the previous day, till the soil, plant new crops, and deal with any problems to ensure a successful harvest the next day. They choose what to plant in their available plots of soil each day, out of ten vegetables grown as cooking ingredients, six special plants that produce trade goods for other professions, and a handful of more unusual possibilities. A bonus crop system rotates through a specific vegetable each day; harvesting that vegetable on the correct day yields a higher quantity of items than usual.
+
+Farmer Yoon, theoretically the original farm owner, works with the player on a few one-time quests to develop the farm, but has no ongoing demands other than optional daily quests, nor does he help with fieldwork.
+
+Completion of quests and advancement of Tillers reputation increases daily crop capacity with more plots of soil, and provides better tools for handling problems at the farm. Tillers reputation also grants access to more exotic seeds and bulk planting options. Individual reputation advancement with Tillers members does not directly benefit farming, although it does unlock cosmetic and utility features around Sunsong Ranch.
+The daily cycle
+
+Due to the magical waters flowing into the Valley of the Four Winds from the Vale of Eternal Blossoms, freshly planted crops grow to maturity in a single day — in reality, after a single daily reset. Therefore, farmers can make the most of their land by harvesting and planting fresh crops every day. A full day's work consists of the following steps:
+
+    Pick up any desired farming-specific daily quests first so that credit can be earned for harvesting or planting, when required
+    Harvest the ripe crops planted on a previous day
+    Obtain the desired seeds for the new day's crops
+    Till the soil, including dealing with any soil conditions that prevent tilling
+    Plant a seed (or  [Unstable Portal Shard]) in each plot of soil, possibly scattering seeds across four plots at a time with a seed bag
+    Deal with each plant's special conditions; some can be handled in bulk
+
+Once all the new plants are healthy and Growing, they are certain to be ready for harvest the following day.
+Seeds
+
+Merchant Greenfield and Milly Greenfield sell seeds and seed bags at Halfhill Market. This is the primary way to obtain seeds to plant at Sunsong Ranch, although harvesting a standard vegetable crop can yield a few seeds of the same type, and special plantings have their own sources. Plantable options fall into several categories.
+
+Standard vegetable seed
+    These grow typical food crops used for cooking, and do not require any specific reputation with the Tillers.
+    They are also available as bags, which require Revered. They are more convenient than regular seeds, planting in 2x2 squares at a time, and are more cost-efficient, planting up to 40 plots of soil total at the same cost as 30 normal seeds.
+Profession-oriented seed
+    These plants with exceptional and sometimes magical properties produce materials used in various professions. They require Revered reputation.
+    Bags of these seeds are also purchasable after reaching Exalted reputation, with the same cost advantage and usage as vegetable seed bags.
+Tree sapling
+    These grow into consumable tree items that can be temporarily displayed for cosmetic reasons in the game world, like many toys. Three varieties are unlocked one by one at Honored through Exalted reputation.
+Special planting
+    These unusual options are not purchased through the Greenfields. An  [Ominous Seed] obtained randomly from harvesting grows into a pet, and each  [Unstable Portal Shard] purchased from Barnaby Fletcher grows into a consumable portal item.
+
+Merchant Greenfield <Seed Vendor> Item 	Cost 	Result
+ [Green Cabbage Seeds] 	15s 	5-10  [Green Cabbage]
+ [Jade Squash Seeds] 	15s 	5-10  [Jade Squash]
+ [Juicycrunch Carrot Seeds] 	15s 	5-10  [Juicycrunch Carrot]
+ [Mogu Pumpkin Seeds] 	15s 	5-10  [Mogu Pumpkin]
+ [Pink Turnip Seeds] 	15s 	5-10  [Pink Turnip]
+ [Red Blossom Leek Seeds] 	15s 	5-10  [Red Blossom Leek]
+ [Scallion Seeds] 	15s 	5-10  [Scallions]
+ [Striped Melon Seeds] 	15s 	5-10  [Striped Melon]
+ [White Turnip Seeds] 	15s 	5-10  [White Turnip]
+ [Witchberry Seeds] 	15s 	5-10  [Witchberries]
+ [Autumn Blossom Sapling] 	10s 	 [Autumn Blossom Tree]
+ [Spring Blossom Sapling] 	10s 	 [Spring Blossom Tree]
+ [Winter Blossom Sapling] 	10s 	 [Winter Blossom Tree]
+ [Enigma Seed] 	1g 	Random Pandaria herb
+ [Magebulb Seed] 	1g 	1-3  [Spirit Dust] and 0-1  [Mysterious Essence]
+ [Raptorleaf Seed] 	1g 	3-4  [Mist-Touched Leather]
+ [Snakeroot Seed] 	1g 	1 Trillium Ore and 0-2  [Ghost Iron Ore]
+ [Windshear Cactus Seed] 	1g 	3-8  [Windwool Cloth] and 0-1  [Bolt of Windwool Cloth]
+ [Songbell Seed] 	1g 	 [Mote of Harmony]
+ [Bag of Green Cabbage Seeds] 	4g 50s 	200-400  [Green Cabbage]
+ [Bag of Juicycrunch Carrot Seeds] 	4g 50s 	200-400  [Juicycrunch Carrot]
+ [Bag of Scallion Seeds] 	4g 50s 	200-400  [Scallions]
+ [Bag of Mogu Pumpkin Seeds] 	4g 50s 	200-400  [Mogu Pumpkin]
+ [Bag of Red Blossom Leek Seeds] 	4g 50s 	200-400  [Red Blossom Leek]
+ [Bag of Pink Turnip Seeds] 	4g 50s 	200-400  [Pink Turnip]
+ [Bag of White Turnip Seeds] 	4g 50s 	200-400  [White Turnip]
+ [Bag of Witchberry Seeds] 	4g 50s 	200-400  [Witchberries]
+ [Bag of Jade Squash Seeds] 	4g 50s 	200-400  [Jade Squash]
+ [Bag of Striped Melon Seeds] 	4g 50s 	200-400  [Striped Melon]
+ [Bag of Songbell Seeds] 	30g 	40  [Mote of Harmony]
+ [Bag of Snakeroot Seeds] 	30g 	40 Trillium Ore and 0-80  [Ghost Iron Ore]
+ [Bag of Enigma Seeds] 	30g 	40 Random Pandaria herbs
+ [Bag of Magebulb Seeds] 	30g 	40-120  [Spirit Dust] and 0-40  [Mysterious Essence]
+ [Bag of Windshear Cactus Seeds] 	30g 	120-320  [Windwool Cloth] and 0-40  [Bolt of Windwool Cloth]
+ [Bag of Raptorleaf Seeds] 	30g 	120-160  [Mist-Touched Leather]
+Other "Seeds" Item 	Source 	Result
+ [Ominous Seed] 	Rare bonus from harvesting crops 	 [Terrible Turnip]
+ [Unstable Portal Shard] 	Barnaby Fletcher 	1 random Portal Shard
+
+Milly Greenfield stands next to her father at the market, selling every bag of seeds he does and nothing else. Instead of charging gold, she exchanges them for 30 single seeds of the same type as the bag. For example, 30x  [Songbell Seed] pays for a  [Bag of Songbell Seeds]. Since each bag can plant 40 crops, this provides the same bulk rate advantage her father offers, but for characters who already have single seeds in their possession.
+Tilling
+
+Each plot of soil must be tilled before it can be planted. This is initially done one at a time, but the  [Master Plow] obtainable at exalted reputation can quickly till four plots in a row. Sometimes after harvesting (typically about 1-6 plots out of every 16 harvested), a plot of soil may either be Occupied by a Squatting Virmen or contain a Stubborn Weed. These must be cleared before tilling. Virmen pop out of the ground and must be killed through normal combat when their soil is disturbed, although the Master Plow makes this much easier by severely damaging and stunning them when run over their soil (it has no effect on virmen already emerged). Stubborn weeds can be grabbed, bringing up a vehicle UI to tug it out of the ground. Once the Master Plow is obtained, the best sequence is typically:
+
+    Harvest all crops
+    Clear all stubborn weeds
+    Use the plow — preferably on the entire field immediately, unless the number of virmen would be overwhelming
+    Kill any virmen that emerged
+    Finish tilling any plots that were virmen-occupied, either by hand or with the plow if convenient
+
+    Soil states and tools
+    Stubborn Weed
+    Stubborn Weed
+    Occupied - Squatting Virmen.
+    Occupied - Squatting Virmen.
+     [Master Plow]
+     [Master Plow]
+
+Planting
+
+The day's seeds can be planted once the soil is tilled, either one at a time or in 2x2 sections using seed bags. Care should be taken with bags not to waste any seeds: align the area of effect over exactly the plots desired and double check they have already been tilled. Single seeds simply are unusable on untilled plots. Each plot of soil can only fit one plant per day, for a total of sixteen with all plots unlocked. Otherwise, there are no restrictions, and any mix of crops can be planted as desired.
+
+Once planted, crops can be in one of eight states that need to be handled before they can grow unattended. However, one extra possibility should be handled first: Any Bursting plants are ready to harvest as soon as they are planted. This should be done immediately, followed by re-tilling and replanting the plot of soil. The replanted replacement crop can then have any conditions treated along with the others. Bursting crops occur randomly and only rarely.
+
+Two crop conditions are treated with tools, starting with basic implements inherited by Farmer Yoon, but upgradable at higher reputation levels to systems capable of bulk treatment of an entire double row of crops. Two other problems are resolved through standard combat, two require a quick spammy minigame through a vehicle UI, and two require a movement-based interaction. Yoon is available to give advice on each problem through gossip dialogue.
+Crop condition 	Treatment
+Parched 	 [Rusty Watering Can] (1x) or  ["Jinyu Princess" Irrigation System] (8x; requires Honored)
+Infested 	 [Vintage Bug Sprayer] (1x) or  ["Thunder King" Pest Repellers] (8x; required Revered)
+Wiggling 	Pull up and kill the Voracious Virmen under the plant
+Alluring 	Touch the plant to attract and kill a Swooping Plainshawk
+Smothered 	Same as a Stubborn Weed: Jump onto it and repeatedly yank on it
+Wild 	Similar but more complex than smothered crops: Grab the lashing vine and achieve dominance over it by wrestling it, interrupting occasional defensive slams by biting it
+Runty 	Grab the plant and jump, tugging it somewhat higher out of the ground
+Tangled 	Grab the vine and pull it out of the ground by running away (approximately across 3/4 the width of the field); movement boosts are allowed
+
+It is possible to summon and kill multiple virmen and hawks at once, for farmers with efficient multi-opponent combat abilities. The hawks should be summoned first since there is a short delay before they arrive.
+
+If a farmer changes their mind about their crop selection, they may dig it up with the  [Dented Shovel] among the other farm implements, after which that plot may be re-tilled, re-planted and re-treated to grow something different. No seeds are recovered in this case.
+
+After planting and treating crops in every plot of soil, crops will grow on their own and be ready for harvest the next day — actually, after the next daily reset.
+
+    Crop states and tools
+    Infested
+    Infested
+    Wiggling - Voracious Virmen
+    Wiggling - Voracious Virmen
+    Alluring - Swooping Plainshawk
+    Alluring - Swooping Plainshawk
+    Smothered
+    Smothered
+    Wild crops
+    Wild crops
+    Tangled
+    Tangled
+     [Vintage Bug Sprayer]
+     [Vintage Bug Sprayer]
+     [Dented Shovel]
+     [Dented Shovel]
+     [Rusty Watering Can]
+     [Rusty Watering Can]
+
+Harvesting
+
+Harvesting is done by looting each plant one by one, leaving untilled soil behind (possibly with complications as described above). There are no farming tools to speed this up. Harvesting anything at the Ranch grants 50 Tillers reputation per plot.
+
+There are three kinds of harvestable food crop: Ripe, Bursting, and Plump. Additionally, a bonus crop system rotates through one type of food crop each day, causing all plants of that type to yield two extra units of food. Harvested vegetables sometimes include new seeds in their loot.
+
+    Ripe crops provide five of whatever was planted, or seven for the bonus crop of the day.
+    Bursting crops produce the same five/seven units as ripe ones, but can and should be harvested immediately after being planted, leaving a fresh soil plot available for re-planting on the same day. Bursting crops are random and rare.
+    Plump crops are laden with eight of whatever was planted, or ten for the daily bonus crop. This occurs randomly, occuring on a few crops per full field on average.
+
+The Ripe, Bursting and Plump labels appear in the name of the in-game object for the plant. Bursting and Plump crops are visibly larger; Bursting ones are also easily distinguished by the lack of growth impediments present on other freshly planted crops. The bonus crop of the day is not displayed or labeled differently from the others, but reveals itself by its quantity when harvested, and can be predicted the day beforehand by Jogu the Drunk.
+
+Only typical Cooking vegetables and fruits follow these quantities. Specialty plants not eligible, instead using a predefined random range or simply yielding one item per plant. Consequently, the bonus crop system only rotates through the ten food crops, repeating every ten days.
+Bonus crops
+
+    See also: Jogu the Drunk
+
+The bonus crop system rotates through one food crop every day. All fruits or vegetables of the correct crop type harvested that day yield an extra 2 units of food. This follows the same rotation every 10 days.[2] The harvest day, not the growth day, determines the bonus results: Leaving a ripe crop in the field an extra day could change whether it provides bonus ingredients.
+
+The bonus crop mechanic is closely tied with Jogu the Drunk, who is intended to have the power to predict the next day's bonus crop. The  [Listen to the Drunk Fish] achievement is named after him and awarded for harvesting seven specific crops on their bonus days. This forecast does not work in Mists of Pandaria Classic, where the achievement has been removed, but attentive players can track it without Jogu's aid by making their own observations about the rotation schedule.[2]
+
+For a calendar of known and predicted bonus crops each day (limited by reported observations by players) see: Bonus crop schedule
+
+Players on a server without recorded data may make their own observations. The quickest way to do this without Jogu's assistance is harvesting one plant of each crop type on the same day, observing which gives a bonus yield. If the server follows the same sequence as other observations, one day would be enough to place it accurately within the rotation and predict the entire schedule. If not, repeating the process for 9 more days in a row (leaving out plants already observed as bonus crops earlier in the sequence) would allow the entire sequence to be observed directly.
+Achievements
+
+These achievements are given for farming. The first will always be achieved during the introductory quests on the farm.
+
+     [Green Acres]
+     [Till the Break of Dawn]
+     [A Taste of Things to Come]
+     [Listen to the Drunk Fish] (not currently available in MoP Classic)
+
+Ranch progress and customization
+
+Sunsong Ranch exists at the same location for all players, but through phasing game technology, each player sees a different version of the area based on their own progress and farming decisions. This is most critical for allowing each character to progress individually in clearing plots of soil for planting and going through their own farm work each day. Some minor cosmetic changes are also specific to each player. This concept was greatly expanded on with the following expansion's Garrison system, and was later used for player housing.
+
+The first visible changes at the ranch occur as players conduct daily farming. Their crops and soil treatments persist through each day, and they see only their own plants at the farm. Over the longer term, completing each quest sequence opens up more plots of soil independently from other players. Each of the three farm equipment upgrades also appears at the ranch when unlocked during this progression.
+
+Once a character has completed N [15-35] Inherit the Earth, Farmer Yoon joins the Tillers Council and gifts the ranch to the player, resulting in the following changes to the ranch:
+
+    Farmer Yoon moves from the ranch to Halfhill Market. (Not only is the ranch itself phased, but Farmer Yoon's NPC model will only appear at the Market to players who have similarly obtained the Ranch.)
+    A post stands in Farmer Yoon's former spot, offering work orders to gain reputation with certain Pandarian factions.
+    The ranch house functions as an inn, and contains a Farmer's Journal that serves as a  [Hearthstone] binding location.
+
+Additionally, becoming Best Friends with any Tillers member (other than Jogu) prompts them to upgrade the farm in some way; the Tillers page has a full list. These are mostly cosmetic, including a number of farm animals, but Gina Mudclaw arranges for a usable mailbox to be built at the Ranch entrance. Similarly, rescuing the Lost Dog ends with it living at the ranch. Finally, players may choose what kind of company is found at their instance of the farm by inviting any one Best Friend to stay there permanently.
+Development
+
+Earlier iterations of Sunsong Ranch had crop outcomes affected by varying weather conditions and seasons, but this was cut in order to reduce complexity.[3]
+Patch changes
+
+    Legion Patch 7.0.3 (2016-07-19): Daily reset times unified for all regions.
+
+        Crops become harvestable after each daily reset in sync with other daily quests. (Unconfirmed but likely that this change was made alongside the overall reset time unification.)
+
+    Warlords of Draenor Patch 6.0.2 (2014-10-14): Unplanted soil at Sunsong Ranch are no longer all oriented in the same direction. This change affects growing crops as well.
+    Mists of Pandaria Hotfix (2013-03-07):
+        The way to obtain Work Order quests has changed. The quests will be given while harvesting crops, or by interacting with the drop-off crate.
+        Fixed an issue where Occupied Soil would sometimes not update correctly or become non-interactive after clearing the associated Squatting Virmen.
+    Mists of Pandaria Hotfix (2013-03-05): Work orders to plant a crop no longer award gold.
+    Mists of Pandaria Patch 5.2.0 (2013-03-05):
+        Seed bags have been added that allow planting of crops 4 plots at a time.
+        Yoon's Mailbox has been renamed to Sunsong Ranch Mailbox.
+        The yield from special crops has been improved to make farming them competitive with gathering these items out in the world.
+        Running the  [Master Plow] across underground Virmen will cause them to pop out of the ground at 30% health and stunned.
+        Wild Crops will now occur less often.
+        The house may be used as a rest point after completing N [15-35] Inherit the Earth.
+    Mists of Pandaria Hotfix (2012-11-29): Fixed an issue that could cause crops to become harvestable at inconsistent times. Crops will now always become harvestable at 3:00 a.m PST.
+    Mists of Pandaria Patch 5.1.0 (2012-11-27): Plantable  [Unstable Portal Shards] added, sold by Barnaby Fletcher.
+    Mists of Pandaria Hotfix (2012-10-25): Players previously unable to plant crops are now able to do so.
+    Mists of Pandaria Patch 5.0.4 (2012-08-28): Added.
+
+Classic
+
+    Mists of Pandaria Patch 5.5.0 (2025-07-01): Seed bags from patch 5.2.0 are available at launch (after reaching the required reputation), and crop harvest timing is on the patch 7.0.3 unified daily reset time. 

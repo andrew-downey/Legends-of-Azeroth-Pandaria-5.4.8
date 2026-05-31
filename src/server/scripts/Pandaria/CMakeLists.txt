@@ -191,6 +191,11 @@ set(scripts_STAT_SRCS
   Pandaria/SiegeOfOrgrimmar/instance_siege_of_orgrimmar.cpp
   Pandaria/SiegeOfOrgrimmar/siege_of_orgrimmar.cpp
   Pandaria/SiegeOfOrgrimmar/siege_of_orgrimmar.h
+  Pandaria/TillersFarmMgr.cpp
+  Pandaria/TillersFarmMgr.h
+  Pandaria/TillersZoneHooks.cpp
+  Pandaria/TillersSoilScript.cpp
+  Pandaria/TillersWorkstation.cpp
 )
 
 message("  -> Prepared: Pandaria")

@@ -10,7 +10,7 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 execute_process(
-  COMMAND hg id -n
+  COMMAND git rev-list --count HEAD
   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
   OUTPUT_VARIABLE rev_id_str
   OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -18,7 +18,7 @@ execute_process(
 )
 
 execute_process(
-  COMMAND hg id -i
+  COMMAND git rev-parse --short HEAD
   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
   OUTPUT_VARIABLE rev_hash_str
   OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -26,12 +26,13 @@ execute_process(
 )
 
 execute_process(
-  COMMAND  hg tip --template "{date|shortdate}"
+  COMMAND git log -1 --format=%cs
   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
   OUTPUT_VARIABLE rev_date
   OUTPUT_STRIP_TRAILING_WHITESPACE
   ERROR_QUIET
 )
+
 
 if(EXISTS ${CMAKE_SOURCE_DIR}/.hg_archival.txt)
   file(READ

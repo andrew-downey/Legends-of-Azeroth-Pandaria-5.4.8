@@ -202,17 +202,25 @@ All are wrapped in START TRANSACTION/COMMIT and use REPLACE INTO (idempotent). R
 
 
 # KNOWN ISSUES CONFIRMED IN-GAME
-- There are 3 "Farmer Yoon" NPCs, one inside a house, one beside the farm, and one on sunsong ranch. 
+- Andi provides a single daily as expected.
+- Other Tillers farmers are in Halfhill Market and all have quests available — expected behavior.
+- There are 3 "Farmer Yoon" NPCs on the farm. These are expected to be phased based on quest completion progress.
+    - 2 of the Yoon's share the same quest offerings, implying they should be in different phases (phasing not working).
     - The one on the farm is facing the wrong direction, provides no gossip or quests. He is close to the tool locations.
     - The one in the house appears to be identical to the one closest to the tillers shrine, provides quests and gossip.
     - The last one appears to be the "correct" one, at a glance.
 - Farmer Fung has Old Hillpaw quests
 - Jogu the Drunk's quest line is entirely available, instead of being chained.
-- The Sunsong Wranch farm is unusable
-    - There are 8 plots showing watermelons only
-    - After Growing the Farm I, there are 2 cabbages that spawn in the wrong locations, but CAN be interacted with. This is expected behaviour, but wrong location. 
-    - Additionally, the cabbages were auto planted instead of requiring the player to target an empty plot.
-- .npc near 20 output while standing on the farm: |
+- The Sunsong Ranch farm is unusable
+    - 8 plots show "Ripe Striped Melon" creatures (entry 66129) on arrival with no quests or phasing gating — these are crop creatures spawned by world DB static spawns (NOT a SmartAI script as previously reported — no SmartAI script file exists for this).
+    - After Growing the Farm I, 2 cabbages spawn in wrong locations but CAN be interacted with. Expected behavior but wrong location.
+    - Cabbages were auto-planted instead of requiring the player to target an empty plot.
+- Best Friend rewards (Cat, Yak, Mailbox, Chickens, Dog, etc.) are all visible on arrival — confirms phasing is not working for farm content. Agrees with earlier report.
+- Hillpaw's Chicken, Shaggy, Dog, and possibly others, appear on the farm when not yet unlocked (phasing issue).
+- Farmer Yoon is offering ALL quests from the very beginning, with no gating or requirements.
+- Introductory chain: "A Helping Hand" quest is visible. Farmer Yoon immediately offers "Learn and Grow I" plus many other quests (should only offer the next available quest in chain).
+
+npc list near farm:
 516082 (Entry: 66129) - [Ripe Striped Melon X:-171.542999 Y:637.843994 Z:165.492004 MapId:870]
 516076 (Entry: 55626) - [General Purpose Bunny (DLA) X:-171.542999 Y:637.843994 Z:165.492996 MapId:870]
 516084 (Entry: 66129) - [Ripe Striped Melon X:-171.727005 Y:642.276001 Z:165.492004 MapId:870]
@@ -240,5 +248,3 @@ All are wrapped in START TRANSACTION/COMMIT and use REPLACE INTO (idempotent). R
 516078 (Entry: 59669) - [Offering Bowl X:-187.434006 Y:637.083008 Z:166.190002 MapId:870]
 516096 (Entry: 55626) - [General Purpose Bunny (DLA) X:-156.382004 Y:643.403015 Z:165.492996 MapId:870]
 516097 (Entry: 55626) - [General Purpose Bunny (DLA) X:-156.766998 Y:647.411011 Z:165.492996 MapId:870]
-- Hillpaw's Chicken, Shaggy, Dog, and possibly others, appear on the farm when they have not yet been unlocked (possible phasing issue)
-- Farmer Yoon is offering ALL quests from the very beginning, with no gating or requirements.

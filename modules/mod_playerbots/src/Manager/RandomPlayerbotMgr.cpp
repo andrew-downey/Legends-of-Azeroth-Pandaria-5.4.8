@@ -165,6 +165,7 @@ void RandomPlayerbotMgr::UpdateAIInternal(uint32 elapsed, bool /*minimal*/)
         {
             loginBots += updateBots;
             loginBots = std::min(loginBots, maxNewBots);
+            loginBots = std::min(loginBots, sPlayerbotAIConfig->maxConcurrentBotLogins);
 
             TC_LOG_INFO("playerbots", "%d new bots", loginBots);
 
@@ -811,8 +812,12 @@ void RandomPlayerbotMgr::OnPlayerLogout(Player* player)
     if (i != _players.end())
         _players.erase(i);
 
-    if (_players.empty())
+    if (_players.empty() && !_isLoggingOut)
+    {
+        _isLoggingOut = true;
         LogoutBotsWithoutRealPlayerInGroup();
+        _isLoggingOut = false;
+    }
 }
 
 void RandomPlayerbotMgr::OnBotLoginInternal(Player* const bot)

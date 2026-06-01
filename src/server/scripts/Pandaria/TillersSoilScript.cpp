@@ -16,19 +16,40 @@
  */
 
 #include "ScriptMgr.h"
-#include "ScriptedGossip.h"
 #include "Player.h"
 #include "GameObject.h"
+#include "Spell.h"
+#include "SpellInfo.h"
 #include "TillersFarmMgr.h"
+
+// Spell IDs for farm interactions
+static uint32 const SPELL_TILLING            = 114431;  // Tilling — cast on empty soil
+static uint32 const SPELL_HARVEST            = 186315;  // Harvest — cast on ready crop
+static uint32 const SPELL_WATERING_CAN       = 79104;  // Rusty Watering Can — cast on growing crop
+static uint32 const SPELL_BUG_SPRAYER        = 80513;  // Vintage Bug Sprayer — cast on pest-infested crop
+static uint32 const SPELL_SEED_WHEAT         = 79102;  // Wheat Seeds — cast on tilled soil
+static uint32 const SPELL_SEED_RICE          = 110030; // Rice Seeds — cast on tilled soil
+static uint32 const SPELL_SEED_ADVANCED      = 110031; // Advanced Seeds — cast on tilled soil
+
+// Minigame crop spell IDs
+static uint32 const SPELL_RUNTY_INTERACT     = 186316;  // Runty — right-click triggers buff
+static uint32 const SPELL_WILD_SMACK         = 186317;  // Wild — right-click triggers smack minigame
+static uint32 const SPELL_SMOOTHERD_SPAM     = 186318;  // Smothered — right-click triggers spam minigame
+static uint32 const SPELL_TANGLED_RUN        = 186319;  // Tangled — right-click triggers run minigame
 
 class tillers_soil_patch : public GameObjectScript
 {
 public:
     tillers_soil_patch() : GameObjectScript("tillers_soil_patch") { }
 
-    bool OnGossipHello(Player* player, GameObject* go) override
+    bool OnDummyEffect(Unit* caster, uint32 spellId, SpellEffIndex /*effIndex*/, GameObject* go) override
     {
-        if (!player)
+        if (!caster || !go)
+            return false;
+
+        Player* player = caster->IsPlayer() ? caster->ToPlayer() : (caster->GetOwner() ? caster->GetOwner()->ToPlayer() : nullptr);
+
+        if (!player || !player->IsInWorld())
             return false;
 
         // Extract plotId from GO's SpellId (set during creation)
@@ -38,190 +59,212 @@ public:
         if (!TillersFarmMgr::IsValidPlotId(plotId))
         {
             TC_LOG_ERROR("scripts", "TillersSoilScript: Invalid plotId %u from GO %u for player %s",
-                        plotId, go->GetEntry(), player->GetName().c_str());
+                         plotId, go->GetEntry(), player->GetName().c_str());
             return false;
         }
 
-        HandleSoilGossip(player, go, plotId);
-        return true;
-    }
+        // Only process spells from players in the correct phase
+        uint32 playerPhaseMask = player->GetPhaseMask();
+        uint32 goPhaseMask = go->GetPhaseMask();
+        if ((playerPhaseMask & goPhaseMask) == 0)
+            return false;
 
-private:
-    void HandleSoilGossip(Player* player, GameObject* go, uint8 plotId)
-    {
         PlotMap& plots = sTillersFarmMgr.GetPlayerPlots(player);
         auto pit = plots.find(plotId);
         if (pit == plots.end())
-            return;
+            return false;
 
-        FarmPlotData const& plot = pit->second;
-        PlayerFarmState const& state = sTillersFarmMgr.GetPlayerState(player->GetGUID().GetCounter());
+        FarmPlotData& plot = pit->second;
+        PlayerFarmState& state = sTillersFarmMgr.GetPlayerState(player->GetGUID().GetCounter());
 
         bool plotsUnlocked = (plotId < GetPlotsUnlockedForPhase(state.farmPhase));
         if (!plotsUnlocked)
         {
-            player->SEND_GOSSIP_MENU(100001, go->GetGUID()); // "This plot is not yet available."
-            return;
+            player->GetSession()->SendNotification("This plot is not yet available.");
+            return false;
         }
 
-        switch (plot.state)
+        // Handle tilling: empty soil -> tilled soil
+        if (spellId == SPELL_TILLING)
         {
-            case PLOT_EMPTY:
-            case PLOT_SOIL_PREPARED:
+            if (plot.state != PLOT_EMPTY && plot.state != PLOT_SOIL_PREPARED)
             {
-                // Show planting menu - only if player has seeds in inventory
-                // We check for any known crop seed items
-                bool hasSeeds = player->HasItemCount(79102, 1) ||   // wheat seeds (example entry)
-                                player->HasItemCount(110030, 1) ||   // rice seeds
-                                player->HasItemCount(110031, 1);      // advanced seeds
-
-                if (!hasSeeds)
-                {
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "This soil is ready for planting. You need seeds to plant here.", 0, plotId);
-                }
-                else
-                {
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Plant seeds here", 1, plotId);
-
-                    // Show seed options based on what the player has
-                    if (player->HasItemCount(79102, 1))
-                        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "|TInterface/Icons/inv_grain_wheat:30:30:-18:0|r Wheat Seeds", 2, plotId);
-
-                    if (player->HasItemCount(110030, 1))
-                        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "|TInterface/Icons/inv_grain_rice:30:30:-18:0|r Rice Seeds", 3, plotId);
-
-                    if (player->HasItemCount(110031, 1))
-                        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "|TInterface/Icons/inv_grain_advanced:30:30:-18:0|r Advanced Seeds", 4, plotId);
-
-                    SendGossipMenuFor(player, 100002, go->GetGUID()); // "Soil Patch" gossip menu ID
-                }
-                break;
+                player->GetSession()->SendNotification("This soil is already prepared.");
+                return false;
             }
 
-            case PLOT_SEEDED:
-            case PLOT_GROWING:
-            {
-                std::string statusMsg = "The seeds are growing...";
+            plot.state = PLOT_SOIL_PREPARED;
 
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, statusMsg.c_str(), 0, plotId);
-
-                if (plot.needsWatering)
-                {
-                    if (sTillersFarmMgr.HasItemInInventory(player, TillersFarmMgr::WATERING_CAN_ITEM))
-                        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Water this soil", 10, plotId);
-                    else
-                        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "|cFFFF0000Need watering can to water|r", 0, plotId);
-                }
-
-                if (plot.hasPests)
-                {
-                    if (sTillersFarmMgr.HasItemInInventory(player, TillersFarmMgr::BUG_SPRAYER_ITEM))
-                        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Remove pests", 20, plotId);
-                    else
-                        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "|cFFFF0000Need bug sprayer to remove pests|r", 0, plotId);
-                }
-
-                SendGossipMenuFor(player, 100003, go->GetGUID()); // "Growing Crop" gossip menu ID
-                break;
-            }
-
-            case PLOT_NEEDS_WATER:
-            {
-                if (sTillersFarmMgr.HasItemInInventory(player, TillersFarmMgr::WATERING_CAN_ITEM))
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Water the drying soil", 10, plotId);
-                else
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "|cFFFF0000Need watering can (item 79104)|r", 0, plotId);
-
-                SendGossipMenuFor(player, 100004, go->GetGUID()); // "Drying Soil" gossip menu ID
-                break;
-            }
-
-            case PLOT_NEEDS_PEST_CONTROL:
-            {
-                if (sTillersFarmMgr.HasItemInInventory(player, TillersFarmMgr::BUG_SPRAYER_ITEM))
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Spray for pests", 20, plotId);
-                else
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "|cFFFF0000Need bug sprayer (item 80513)|r", 0, plotId);
-
-                SendGossipMenuFor(player, 100005, go->GetGUID()); // "Pest Infestation" gossip menu ID
-                break;
-            }
-
-            case PLOT_READY_TO_HARVEST:
-            {
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Harvest your crop", 30, plotId);
-
-                if (plot.needsWatering)
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "|cFFFF0000Note: Soil is drying out - harvest soon|r", 0, plotId);
-
-                SendGossipMenuFor(player, 100006, go->GetGUID()); // "Ready to Harvest" gossip menu ID
-                break;
-            }
-
-            case PLOT_BROKEN:
-            {
-                if (sTillersFarmMgr.HasItemInInventory(player, TillersFarmMgr::SHOVEL_ITEM))
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Repair this plot", 30, plotId);
-                else
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "|cFFFF0000Need shovel (item 89880) to repair|r", 0, plotId);
-
-                SendGossipMenuFor(player, 100007, go->GetGUID()); // "Broken Plot" gossip menu ID
-                break;
-            }
-
-            default:
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "This plot appears to be in an unusual state.", 0, plotId);
-                SendGossipMenuFor(player, 100008, go->GetGUID());
-                break;
+            TC_LOG_INFO("scripts", "TillersSoilScript: Player %u tilled plot %u",
+                        player->GetGUID().GetCounter(), plotId);
+            return true;
         }
-    }
 
-public:
-    // Gossip action handlers called by the gossip menu system
-    static void HandleSoilAction(Player* player, GameObject* go, uint32 sender, uint32 plotId)
-    {
-        if (!player || !go)
-            return;
-
-        if (!TillersFarmMgr::IsValidPlotId(plotId))
-            return;
-
-        switch (sender)
+        // Handle planting: tilled soil -> seeded
+        if (spellId == SPELL_SEED_WHEAT || spellId == SPELL_SEED_RICE || spellId == SPELL_SEED_ADVANCED)
         {
-            case 1: // Plant seeds - generic, need to know which seed type from action param
-                break;
-            case 2: // Wheat Seeds
-                sTillersFarmMgr.PlantSeed(player, plotId, 79102);
-                break;
-            case 3: // Rice Seeds
-                sTillersFarmMgr.PlantSeed(player, plotId, 110030);
-                break;
-            case 4: // Advanced Seeds
-                sTillersFarmMgr.PlantSeed(player, plotId, 110031);
-                break;
-            case 10: // Water plot
-                sTillersFarmMgr.WaterPlot(player, plotId);
-                break;
-            case 20: // Remove pests
-                sTillersFarmMgr.RemovePests(player, plotId);
-                break;
-            case 30: // Harvest / Repair (same action ID for both states)
+            if (plot.state != PLOT_SOIL_PREPARED)
             {
-                PlotMap& plots = sTillersFarmMgr.GetPlayerPlots(player);
-                auto pit = plots.find(plotId);
-                if (pit != plots.end())
-                {
-                    if (pit->second.state == PLOT_READY_TO_HARVEST)
-                        sTillersFarmMgr.HarvestCrop(player, plotId);
-                    else if (pit->second.state == PLOT_BROKEN)
-                        sTillersFarmMgr.RepairPlot(player, plotId);
-                }
-                break;
+                player->GetSession()->SendNotification("This soil needs to be tilled first.");
+                return false;
             }
+
+            // Validate plot is unlocked
+            uint8 plotsUnlockedCount = GetPlotsUnlockedForPhase(state.farmPhase);
+            if (plotId >= plotsUnlockedCount)
+            {
+                player->GetSession()->SendNotification("This plot is not yet unlocked.");
+                return false;
+            }
+
+            // Consume seed from inventory
+            uint32 seedEntry = spellId == SPELL_SEED_WHEAT ? SPELL_SEED_WHEAT :
+                               spellId == SPELL_SEED_RICE ? SPELL_SEED_RICE : SPELL_SEED_ADVANCED;
+
+            if (!player->HasItemCount(seedEntry, 1))
+            {
+                player->GetSession()->SendNotification("You do not have any seeds.");
+                return false;
+            }
+
+            // Plant the seed
+            if (sTillersFarmMgr.PlantSeed(player, plotId, seedEntry))
+            {
+                plot.state = PLOT_SEEDED;
+                plot.seedEntry = seedEntry;
+                plot.needsWatering = false;
+                plot.hasPests = false;
+                plot.maturityTimestamp = sTillersFarmMgr.GetMaturityTime(seedEntry, plotId);
+
+                TC_LOG_INFO("scripts", "TillersSoilScript: Player %u planted seed %u on plot %u",
+                            player->GetGUID().GetCounter(), seedEntry, plotId);
+            }
+            return true;
         }
 
-        // Refresh gossip after action
-        player->SEND_GOSSIP_MENU(100001, go->GetGUID());
+        // Handle harvesting: ready crop -> soil prepared
+        if (spellId == SPELL_HARVEST)
+        {
+            if (plot.state != PLOT_READY_TO_HARVEST)
+            {
+                player->GetSession()->SendNotification("This crop is not ready to harvest yet.");
+                return false;
+            }
+
+            if (sTillersFarmMgr.HarvestCrop(player, plotId))
+            {
+                plot.state = PLOT_SOIL_PREPARED;
+                plot.seedEntry = 0;
+                plot.needsWatering = false;
+                plot.hasPests = false;
+                plot.maturityTimestamp = 0;
+
+                TC_LOG_INFO("scripts", "TillersSoilScript: Player %u harvested plot %u",
+                            player->GetGUID().GetCounter(), plotId);
+            }
+            return true;
+        }
+
+        // Handle watering: growing crop -> watered
+        if (spellId == SPELL_WATERING_CAN)
+        {
+            if (plot.state != PLOT_NEEDS_WATER && plot.state != PLOT_SEEDED && plot.state != PLOT_GROWING)
+            {
+                player->GetSession()->SendNotification("This crop does not need water.");
+                return false;
+            }
+
+            if (!sTillersFarmMgr.HasItemInInventory(player, TillersFarmMgr::WATERING_CAN_ITEM))
+            {
+                player->GetSession()->SendNotification("You need a rusty watering can to water crops.");
+                return false;
+            }
+
+            sTillersFarmMgr.WaterPlot(player, plotId);
+            plot.needsWatering = false;
+
+            TC_LOG_INFO("scripts", "TillersSoilScript: Player %u watered plot %u",
+                        player->GetGUID().GetCounter(), plotId);
+            return true;
+        }
+
+        // Handle pest control: pest-infested crop -> clean
+        if (spellId == SPELL_BUG_SPRAYER)
+        {
+            if (!plot.hasPests)
+            {
+                player->GetSession()->SendNotification("This crop has no pests.");
+                return false;
+            }
+
+            if (!sTillersFarmMgr.HasItemInInventory(player, TillersFarmMgr::BUG_SPRAYER_ITEM))
+            {
+                player->GetSession()->SendNotification("You need a vintage bug sprayer to remove pests.");
+                return false;
+            }
+
+            sTillersFarmMgr.RemovePests(player, plotId);
+            plot.hasPests = false;
+
+            TC_LOG_INFO("scripts", "TillersSoilScript: Player %u removed pests from plot %u",
+                        player->GetGUID().GetCounter(), plotId);
+            return true;
+        }
+
+        // Handle minigame crops: runty, wild, smothered, tangled
+        // These trigger special interaction spells that require follow-up actions
+        if (spellId == SPELL_RUNTY_INTERACT)
+        {
+            if (plot.state != PLOT_READY_TO_HARVEST)
+            {
+                player->GetSession()->SendNotification("This crop is not ready to harvest yet.");
+                return false;
+            }
+
+            // Runty: player must press spacebar while mounted to catch
+            // This is handled by the client — we just validate and let the
+            // minigame proceed. The client sends a separate confirmation.
+            player->GetSession()->SendNotification("Right-click and jump to catch the Runty!");
+            return true;
+        }
+
+        if (spellId == SPELL_WILD_SMACK)
+        {
+            if (plot.state != PLOT_READY_TO_HARVEST)
+            {
+                player->GetSession()->SendNotification("This crop is not ready to harvest yet.");
+                return false;
+            }
+
+            player->GetSession()->SendNotification("Right-click and spam ability to smack the Wild crop!");
+            return true;
+        }
+
+        if (spellId == SPELL_SMOOTHERD_SPAM)
+        {
+            if (plot.state != PLOT_READY_TO_HARVEST)
+            {
+                player->GetSession()->SendNotification("This crop is not ready to harvest yet.");
+                return false;
+            }
+
+            player->GetSession()->SendNotification("Right-click and keep pressing 1 to smother the crop!");
+            return true;
+        }
+
+        if (spellId == SPELL_TANGLED_RUN)
+        {
+            if (plot.state != PLOT_READY_TO_HARVEST)
+            {
+                player->GetSession()->SendNotification("This crop is not ready to harvest yet.");
+                return false;
+            }
+
+            player->GetSession()->SendNotification("Right-click and press 2 for Vine Slam to clear the Tangled crop!");
+            return true;
+        }
+
+        return false;
     }
 };
 

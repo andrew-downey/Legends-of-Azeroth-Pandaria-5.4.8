@@ -1,0 +1,418 @@
+One of the most memorable activities in Mists of Pandaria is the ability to manage your own player farm! Sunsong Ranch is your own little garden in the mists where you can take a break from the usual grind and earn some useful rewards in the process. This guide will teach you how to unlock, upgrade, and utilize Sunsong Ranch to grow crops, harvest materials, and earn reputation with The Tillers in MoP Classic.
+
+Sunsong Ranch Location
+The Sunsong Ranch farm is located in Valley of the Four Winds, on the west side of Halfhill in the center of the zone.
+
+/way Valley of the Four Winds 52, 49
+ 
+
+How to Unlock the Farm
+Head to Sunsong Ranch and speak with Farmer Yoon to begin. You’ll find him swinging his pick at a large rock.
+
+You can reach and unlock the farm as early as level 85. Note however that you will reach a point where you cannot go any further with the farm until you reach level 90.
+
+farmer yoon sunsong ranch farm mop classic
+Farmer Yoon at Sunsong Ranch
+
+ 
+
+Farm Quests
+The farm won’t be much to look at yet: just a modest property with some weeds and rocks. You’ll gradually improve it by completing quests, and eventually you will be able to take over ownership of the ranch.
+
+ 
+
+Neutral Quests
+These quests are available immediately when you arrive on the farm. Completing this first chain will get you to Friendly with The Tillers and will unlock daily quests. You’ll also unlock your first 4 plots of soil for growing crops. These are the only quests you can complete before reaching level 90.
+
+A Helping Hand
+Learn and Grow I: Seeds
+Learn and Grow II: Tilling and Planting
+Learn and Grow III: Tending Crops
+Learn and Grow IV: Harvesting
+Learn and Grow V: Halfhill Market
+Learn and Grow VI: Gina’s Vote
+ 
+
+A Helping Hand
+This is the first quest you’ll get from Farmer Yoon when you arrive on the farm. Look for Unbudging Rocks on the property. You’ll find them around the little garden area and along the path. When you hover over them, your icon will look like a mining pick. Right-click on them and your character will spend a few seconds mining them, and then they will disappear.
+
+a helping hand quest unbudging rock sunsong ranch farm mop classic
+Breaking an Unbudging Rock
+
+ 
+
+Learn and Grow I: Seeds
+Farmer Yoon has moved into his little hut. Go up the stairs to turn in the first quest. Some of the neighbors will arrive and the NPCs will chat briefly. Then you’ll be able to pick up this quest. To complete it, visit Merchant Greenfield at the nearby Halfhill Market to obtain a Packet of Green Cabbage Seeds, then return to Farmer Yoon.
+
+learn and grow i seeds merchant greenfield sunsong ranch farm mop classic
+Merchant Greenfield at Halfhill Market
+
+ 
+
+Learn and Grow II: Tilling and Planting
+Farmer Yoon offers this quest as soon as you complete the one above. You’ll find two plots of Untilled Soil in the garden area. Your cursor will become a grabbing hand when you hover over them. Right-click on them to till the soil. Then target the freshly Tilled Soil and use the EZ-Gro Green Cabbage Seeds from your inventory to plant them. Return to Farmer Yoon to hand in the next quest.
+
+learn and grow ii tilling and planting quest untilled soil sunsong ranch farm mop classic
+Tilling the Untilled Soil
+learn and grow ii tilling and planting quest tilled soil sunsong ranch farm mop classic
+Planting seeds in Tilled Soil
+
+ 
+
+Learn and Grow III: Tending Crops
+This next quest from Farmer Yoon has you tending the crops you just planted. Target a Parched EZ-Gro Green Cabbage in one of the two plots you just prepared and use the Rusty Watering Can from your inventory to water it. Return to Farmer Yoon to continue.
+
+learn and grow iii tending crops quest watering parched cabbage sunsong ranch farm mop classic
+Watering a Parched EZ-Gro Green Cabbage
+
+ 
+
+Learn and Grow IV: Harvesting
+Talk to Farmer Yoon again to pick up this quest. After a few moments, your crops will grow into Ripe EZ-Gro Green Cabbage, which will give you an herb harvesting cursor when you hover over it. Right-click them to harvest the crops, and return to Farmer Yoon to turn them in.
+
+You’ll earn the Green Acres achievement in the process of completing this quest. You should also reach Friendly with The Tillers. Most importantly, you’ll unlock your first 4 plots for growing crops of your own!
+
+learn and grow iv harvesting ripe cabbage sunsong ranch farm mop classic
+Harvesting a Ripe EZ-Gro Green Cabbage
+
+ 
+
+Learn and Grow V: Halfhill Market
+Farmer Yoon wants you to find something on the property that can be given as a small gift. Take a look underneath his hut and you’ll see a plot of Dark Soil. Right-click on it to loot a Marsh Lily. Take this item to Halfhill Market and give it to Gina Mudclaw, who is standing near the middle of the area.
+
+This will get you started on the Best Friends reputation track with Gina Mudclaw, who will start at the Stranger level. It will also unlock daily quests for The Tillers if you are level 90.
+
+learn and grow v halfhill market dark soil marsh lily sunsong ranch farm mop classic
+Dark Soil under the hut
+learn and grow v halfhill market gina mudclaw sunsong ranch farm mop classic
+Gina Mudclaw at Halfhill Market
+
+ 
+
+Learn and Grow VI: Gina’s Vote
+Gina Mudclaw tasks you with growing your first crops of your own. Head over to Merchant Greenfield, who give you the seeds for the second quest. You can now buy a variety of seeds from him for planting in your garden plots. Purchase Scallion Seeds and head back over to the ranch.
+
+Now you’ll go through the same steps you completed for the quests above:
+
+Right-click the Untilled Soil to till it.
+Target the Tilled Soil and use the Scallion Seeds from your inventory to plant them.
+Each plant will spawn with some sort of issue which needs to be resolved in order for it to grow. You can get help with these in our Farming Tips section later in this guide.
+Wait for your crops to grow. While this happened instantly for the previous quest, it will take a full day from here on out. 
+When they’re ready, harvest your Ripe Scallions and bring them to Gina Mudclaw. Completing this quest will earn you Acquaintance reputation with her.
+
+You won’t be able to continue with this quest chain until you reach level 90 and earn Honored reputation with The Tillers by completing daily quests for the faction.
+
+learn and grow vi gina's vote scallions sunsong ranch farm mop classic
+Your crops will take a day to grow from now on.
+
+ 
+
+Honored Quests
+After the initial series of quests, you will need to be at least level 90 and continue improving your reputation with The Tillers in order to progress through the quest chain. This next section requires Honored reputation and will earn you 4 additional plots of soil to grow crops (for a total of 8.)
+
+Growing the Farm I: The Weeds
+Growing the Farm I: A Little Problem
+The “Jinyu Princess” Irrigation System
+Later in Honored (at 5500 reputation), you’ll be able to pick up another series of three quests:
+
+Mung-Mung’s Vote I: A Hozen’s Problem
+Mung-Mung’s Vote II: Rotten to the Core
+Mung-Mung’s Vote III: The Great Carrot Caper
+ 
+
+Growing the Farm I: The Weeds
+As soon as you reach Honored with The Tillers, Farmer Yoon will offer this next quest. Head west to the southern part of The Heartland and locate Gai Lan. You’ll find him on top of a rock in the middle of a field. He will give you the next quest.
+
+growing the farm i the weeds gai lan sunsong ranch mop classic
+Gai Lan at The Heartland
+
+ 
+
+Growing the Farm I: A Little Problem
+Gai Lan offers this quest when you turn in the one above. Around the nearby field you’ll see some Spideroot on the ground. Right-click to collect it. You’ll have to fight some Spiter Mites that spawn as you do this. Collect 6 of the plants and return it Gai Lan to hand them in. You’ll receive a 15-minute Growing the Farm buff upon completing the quest. During this time, you’ll see Gai Lan spraying the weed killer on your garden. When the buff expires, you’ll be able to continue to the next quest.
+
+When Gai Lan finishes spraying and the buff expires, you’ll unlock 4 additional farm plots to use for a total of 8. You’ll also receive a letter in the mail from Farmer Yoon after completing this quest that contains a Basic Seed Pack with 2 Scallion Seeds and 2 Juicycrunch Carrot Seeds inside.
+
+growing the farm i a little problem spideroot sunsong ranch mop classic
+Spideroot in The Heartland
+
+ 
+
+The “Jinyu Princess” Irrigation System
+After you complete the quests above and the Growing the Farm buff expires, you’ll be able to purchase a "Jinyu Princess" Irrigation System from Gina Mudclaw. Right-click this item to begin the quest, and then hand it in to Farmer Yoon.
+
+Completing this quest will add a Sprinkler to your garden. Right-clicking it will water any Parched crops in the two rows in front of it all at once. You’ll eventually need to install a second one when you have more than two rows of crops.
+
+jinyu princess iririgation system sprinkler sunsong ranch mop classic
+Sprinkler in action
+
+ 
+
+Mung-Mung’s Vote I: A Hozen’s Problem
+Farmer Yoon offers this quest once you reach 5500 reputation with The Tillers. Head northwest to The Heartland and find Mung-Mung at the northernmost building, just south of the lake on the map. Speak with him to turn in the quest and continue to the next one. 
+
+mung mung sunsong ranch farm mop classic
+Mung-Mung in The Heartland
+
+ 
+
+Mung-Mung’s Vote II: Rotten to the Core
+Mung-Mung wants you to collect Partially Chewed Carrots. You’ll find them lying on the ground in the fields nearby. There’s also an underground burrow where you can find more. You’ll have to deal with some of the Springtail mobs in the area in the process. Bring 10 of the carrots back to Mung-Mung to progress to the next quest.
+
+partially chewed carrot sunsong ranch farm mop classic
+A Partially Chewed Carrot
+
+ 
+
+Mung-Mung’s Vote III: The Great Carrot Caper
+Now Mung-Mung wants you to grow some Juicycrunch Carrot for him on your farm. You’ll need to obtain some Juicycrunch Carrot Seeds from Merchant Greenfield if you don’t have any. The Dented Shovel can be used if you want to remove some crops you’ve already planted to make room. Plant two of the carrot seeds and tend to them so they grow. When they’re ripe, harvest 10 carrots and bring them to Mung-Mung to complete the quest.
+
+Note that you must plant and harvest the carrots as part of the quest. If you planted some carrots the day before, they should still count as long as you wait to harvest them until you have the quest in your log. You can then plant some fresh ones to qualify for both. You won’t be able to turn in any carrots without getting credit for planting and harvesting them first.
+
+ 
+
+Revered Quests
+Note that once you reach Revered, you can purchase Grand Commendation of the Tillers to speed things along.
+
+The next set of quests unlocks at Revered reputation with The Tillers. Completing these quests will earn you 4 more plots of soil for a total of 12.
+
+Growing the Farm II: The Broken Wagon
+Growing the Farm II: Knock on Wood
+“Thunder King” Pest Repellers
+A Shabby New Face
+One Magical, Flying Kingdom’s Trash…
+As you progress further in to Revered, more quests will become available at various reputation levels:
+
+4000 Reputation:
+Farmer Fung’s Vote I: Yak Attack
+Farmer Fung’s Vote II: On the Loose
+Farmer Fung’s Vote III: Crazy for Cabbage
+8500 Reputation:
+Nana’s Vote I: Nana’s Secret Recipe
+Nana’s Vote II: The Sacred Springs
+Nana’s Vote III: Witchberry Julep
+12,600 Reputation:
+Lost and Lonely
+16,800 Reputation:
+Haohan’s Vote I: Bungalow Break-In
+Haohan’s Vote II: The Real Culprits
+Haohan’s Vote III: Pure Poison
+Haohan’s Vote IV: Melons For Felons
+20,000 Reputation: 
+Haohan’s Vote V: Chief Yip-Yip
+Completing the last Haohan’s Vote quest will get you to Exalted, unlocking the last few quests (covered in the Exalted Quests section).
+
+ 
+
+Growing the Farm II: The Broken Wagon
+Farmer Yoon will offer this quest when you reach Revered with The Tillers. He’ll also send you letter with another Basic Seed Pack. To complete the quest, find Fish Fellreed on the dock at the southwestern shore of Cattail Lake.
+
+fish fellreed sunsong ranch farm mop classic
+Fish Fellreed at Cattail Lake
+
+ 
+
+Growing the Farm II: Knock on Wood
+Fish Fellreed offers this quest when you hand in the one above. Head into the lake and look for Boat Planks on the bottom. All of the crabs in the lake will be hostile while you’re on this quest, so you’ll have to fight some of them in the process. Loot 100 Waxed Planks and bring them back to Fish Fellreed to complete the quest.
+
+Similar to when Gai Lan sprayed your crops, you’ll get a 15-minute Growing the Farm buff when you complete this quest. During this time, Fish Fellreed will be at your farm working on the wagon. When the buff expires, the wagon will be removed and you’ll have another 4 farm plots available for a total of 12.
+
+boat planks sunsong ranch farm mop classic
+Boat Planks on the lake floor
+
+ 
+
+“Thunder King” Pest Repellers
+After your Growing the Farm buff expires from the quest above, you’ll be able to purchase "Thunder King" Pest Repellers from Gina Mudclaw. Right-click this item to begin the quest, and then hand it in to Farmer Yoon.
+
+Completing this quest will add a Pest Repeller to your garden that you can right-click to spray any Infested crops in the two rows on either side of it. You’ll need to install a second one if you want to cover all of your plots.
+
+thunder king pest repellers sunsong ranch farm mop classic
+An installed Pest Repeller device
+
+ 
+
+A Shabby New Face
+This quest becomes available at Revered with The Tillers, but only on days when Barnaby Fletcher is present at Halfhill Market. Pick up the quest from Merchant Greenfield, the vendor who sells your seeds. Then go across the market to hand in the quest to Barnaby Fletcher.
+
+barnaby fletcher sunsong ranch farm mop classic
+Barnaby Fletcher at Halfhill Market
+
+ 
+
+One Magical, Flying Kingdom’s Trash…
+Barnaby Fletcher offers this quest next. You don’t need to do anything, just hand it in.
+
+Barnaby will now sell Unstable Portal Shards that you can grow on your farm.
+
+ 
+
+Farmer Fung’s Vote I: Yak Attack
+At 4000 reputation with The Tillers, Farmer Yoon will offer this next quest. To complete it, locate Farmer Fung in the northeast corner of The Heartland and speak to him. He may also be located at Halfhill if he’s offering a daily quest. You’ll find him standing on top of a large pile of hay.
+
+farmer fung sunsong ranch farm mop classic
+Farmer Fung in The Heartland
+
+ 
+
+Farmer Fung’s Vote II: On the Loose
+Farmer Fung wants your help collecting his Escaped Shagskins. Look for them in The Verdant Belt, the open fields between Halfhill and The Heartland. Jump onto them and ride them into the pen to turn them in.
+
+escaped shagskins sunsong ranch farm mop classic
+Escaped Shagskins in The Verdant Belt
+
+ 
+
+Farmer Fung’s Vote III: Crazy for Cabbage
+Farmer Fung now wants you to grow some Green Cabbage on your farm. Get 3 Green Cabbage Seeds from Merchant Greenfield if you don’t already have some. The Dented Shovel can be used to make room if desired. Grow your seeds and harvest them when ripe to bring 15 cabbages to Farmer Fung and complete the quest. As with the carrots in Mung-Mung’s quest, you must harvest the cabbages before you will be able to turn them in – you can’t just hand in some that you already had on hand.
+
+ 
+
+Nana’s Vote I: Nana’s Secret Recipe
+At 8500 reputation with The Tillers, Farmer Yoon offers this short series. To complete it, find Nana Mudclaw inside the highest house in Halfhill and speak with her.
+
+nana mudclaw sunsong ranch farm mop classic
+Nana Mudclaw at Halfhill
+
+ 
+
+Nana’s Vote II: The Sacred Springs
+Nana Mudclaw wants you to bring her some Thousand-Year Water. Fly up to the mouth of the waterfall that feeds the Gilded Fan and Pools of Purity on the northern edge of the zone (around 57, 22). Defeat the Thousand-Year Guardian and use the Empty Pitcher on its remains. Return to Nana Mudclaw to hand in the quest.
+
+thousand year guardian sunsong ranch farm mop classic
+Thousand-Year Guardian at the top of the waterfall
+
+ 
+
+Nana’s Vote III: Witchberry Julep
+Like Mung-Mung and Farmer Fung, Nana Mudclaw now asks you to grow some crops on your farm, this time Witchberries. Obtain some Witchberry Seeds from Merchant Greenfield if needed and make use of the Dented Shovel if you want to remove some existing crops. Grow and harvest 15 berries and bring them to Nana Mudclaw to earn her vote. Once again you’ll need to plant and harvest the berries while you have the quest in order to be able to hand them in.
+
+ 
+
+Lost and Lonely
+When you reach 12,600 reputation with The Tillers, you’ll be able to find a Lost Dog at the southern end of The Heartland (around 42, 50). For this quest, kill Skyrange Mushan at the Skyrange – the high cliffs west of The Heartland where all of the daily quests take place for The Tillers. Loot 20 Tasty T-Bone and bring them back to the Lost Dog. The dog will relocate to your farm, where its name will just be Dog.
+
+lost dog sunsong ranch farm mop classic
+Lost Dog in The Heartland
+
+ 
+
+Haohan’s Vote I: Bungalow Break-In
+At 16,800 reputation with The Tillers, you’ll begin working toward the final vote. Farmer Yoon offers this quest, sending you to speak with Haohan Mudclaw, head of the union. He’s at the northern building of The Heartland where you found Mung-Mung. He may also be located at Halfhill if he’s offering a daily quest. Speak with him to continue.
+
+haohan mudclaw sunsong ranch farm mop classic
+Haohan Mudclaw at The Heartland
+
+ 
+
+Haohan’s Vote II: The Real Culprits
+Haohan Mudclaw is investigating a break-in at his shed. Head to the building to the southwest (around 39, 44) and look for Suspicious Footprints on the ground. Interact with 8 of them to spawn a Kunzen Farm-Raider. Defeat it and head back over to Farmer Yoon to hand in the quest.
+
+suspicious footprints sunsong ranch farm mop classic
+Suspicious Footprints around the shed in The Heartland
+
+ 
+
+Haohan’s Vote III: Pure Poison
+Farmer Yoon gives you a list of items to collect for this quest. All four can be found in or around the entrances to Springtail burrows in the mountains north of the lake:
+
+Bloodbloom is inside a burrow that opens at 44, 22.
+Cave Lily is inside a burrow that opens at 47, 21.
+Ghostcap is inside a burrow that opens at 39, 20.
+Violet Lichen is right outside the burrow entrance at 44, 22.
+Head back to Farmer Yoon to hand these in and continue to the next quest.
+
+pure poison ghostcap sunsong ranch farm mop classic.jpg
+Bloodbloom
+pure poison cave lily sunsong ranch farm mop classic.jpg
+Cave Lily
+
+pure poison bloodbloom sunsong ranch farm mop classic.jpg
+Ghostcap
+pure poison violet lichen sunsong ranch farm mop classic
+Violet Lichen
+
+ 
+
+Haohan’s Vote IV: Melons For Felons
+Now Farmer Yoon wants you to plant and harvest some Striped Melons. Purchase 4 Striped Melon Seeds from Merchant Greenfield (if you don’t have some on hand already) and plant them in your farm plots. Again you can choose to dig up some of your existing crops if needed. Again you’ll need to actually plant and harvest the crops to be able to turn them in.
+
+ 
+
+Haohan’s Vote V: Chief Yip-Yip
+When you reach 20,000 reputation with The Tillers, you’ll be able to pick up this quest from Farmer Yoon to obtain the last vote. Head to the Kunzen Cave that is marked at the north end of the Skyrange to the northwest. There you’ll find Chief Yip-Yip, who is pretty tough. Be sure to use the Throw Melon ability you gain for your Extra Action button. It will light up when he’s about to charge, and you should use it to stun him. Defeat the chief to complete the quest and return to Farmer Yoon to hand it in.
+
+Completing this quest will bring you to Exalted with The Tillers. Haohan Mudclaw will appear at the farm to welcome you and Farmer Yoon into the union, and the Exalted quests will become available.
+
+chief yip yip sunsong ranch farm mop classic
+Chief Yip-Yip at the Kunzen Cave
+
+ 
+
+Exalted Quests
+The final set of quests becomes available when you reach Exalted with The Tillers. These quests will earn you the final 4 plots of soil, bringing your total to 16. The last quest will grant you full ownership of Sunsong Ranch when completed.
+
+Growing the Farm III: The Mossy Boulder
+A Second Hand
+The “Earth-Slasher” Master Plow
+Inherit the Earth
+ 
+
+Growing the Farm III: The Mossy Boulder
+When you reach Exalted with The Tillers, Farmer Yoon will send you a letter with another Basic Seed Pack. He’ll also offer this quest. It sends you to talk to Haohan Mudclaw, who is either back at his house in The Heartland or at Halfhill Market. When you do so, you’ll get another Growing the Farm buff that lasts for 15 minutes. During this time, Haohan will head to your farm with Thunder, who will charge the boulder that is blocking the last section of the garden. When the buff expires, your farm will be fully upgraded with the last 4 plots for a total of 16.
+
+16 plots sunsong ranch farm mop classic
+The garden with all 16 plots unlocked
+
+ 
+
+A Second Hand
+When you have reached Exalted with The Tillers, you’ll be able to pick up this quest from the Tillers Shrine on Sunsong Ranch. To complete it, you will need to reach Best Friends rank with one of the Tillers NPCs. Then you can speak with them and invite them to come to your farm. Turn in the quest back at the Tillers Shrine, and the NPC you chose will now be found hanging around your farm.
+
+tillers shrine sunsong ranch farm mop classic
+The Tillers Shrine
+
+ 
+
+The “Earth-Slasher” Master Plow
+When you’ve reached Exalted with The Tillers, you’ll be able to purchase a "Earth-Slasher" Master Plow from Gina Mudclaw, which starts this quest. You can then hand it in to Farmer Yoon.
+
+Completing the quest will cause the Master Plow to appear nearby, where the other tools are found when they spawn. You can pick it up and use it from your inventory to quickly plow untilled soil.
+
+master plow sunsong ranch farm mop classic
+The Master Plow with the other tools
+
+ 
+
+Inherit the Earth
+For this final quest, you must be Exalted with The Tillers and have all 16 farm plots unlocked. You can pick up the quest from Nana Mudclaw in her house at the top tier of Halfhill. She sends you to speak with Farmer Yoon and ask him to take her place in the Tillers Union. He’ll accept and grant you ownership of Sunsong Ranch. Return to Nana Mudclaw to complete the quest.
+
+ 
+
+Farming Tips
+We’ve compiled some tips for handling various tasks on your farm. You can also ask Farmer Yoon for farming advice at any time.
+
+ 
+
+How to Remove Crops
+There is a Dented Shovel leaning against a sack on the edge of the garden. You can use it to dig up a plant so you can grow something else in the same soil. Doing so does not return the seed.
+
+ 
+
+Farm Tools
+Along with the Dented Shovel, there are other tools that you can use which spawn on the corner of the garden next to the hut. You don’t need to keep these tools in your inventory – you can go ahead and delete them if you want and they will respawn in the same place for you to pick up again.
+
+ 
+
+Handling Issues
+If you get an Alluring crop, right-click it and kill the Swooping Plainshawk that flies down.
+If you get an Encroaching Weed, right-click it and use the 1 key to Pull! until it’s gone.
+If you get an Infested crop, pick up the Vintage Bug Sprayer that is leaning against the stairs to the hut. Target the crop, stand close to it, and use the item. If you have installed "Thunder King" Pest Repellers, you can right-click the device instead. Each Pest Repeller covers 8 plots, so you’ll need two of them to cover all of your crops.
+If you get a plot of Occupied soil, right-click it and kill the Squatting Virmen that spawns.
+If you get a Parched crop, target it and use the Rusty Watering Can from your inventory to water it, or use the Sprinkler on the edge of the garden if you have installed a "Jinyu Princess" Irrigation System. Each Sprinkler covers 8 plots, so you will eventually need a second one to be able to water all of your crops.
+If you get a Runty crop, right-click it and your character will kneel, then jump to pull it up.
+If you get a Smothered crop, right-click it and use the 1 key to Pull! until it’s gone.
+If there’s a Stubborn Weed, right-click it and use the 1 key to Pull! until it’s gone.
+If you get a Tangled crop, right-click it and run away to pull out the vines.
+If you get a Wiggling crop, right-click it and kill the Voracious Virmen that spawns.
+If you get a Wild crop, you’ll need to wrestle the plant until it lets go.

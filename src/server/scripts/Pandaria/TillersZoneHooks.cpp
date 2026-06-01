@@ -17,6 +17,7 @@
 
 #include "ScriptMgr.h"
 #include "Player.h"
+#include "QuestDef.h"
 #include "TillersFarmMgr.h"
 
 class tillers_zone_hooks : public PlayerScript
@@ -39,6 +40,25 @@ public:
         // Despawn farm when leaving Valley of the Four Winds (map changed)
         if (player->GetZoneId() != TillersFarmMgr::VFW_ZONE_ID)
             sTillersFarmMgr.DespawnPlayerFarm(player);
+    }
+
+    void OnLogout(Player* player) override
+    {
+        // Save farm state before disconnect
+        if (sTillersFarmMgr.IsPlayerFarmSpawned(player))
+            sTillersFarmMgr.DespawnPlayerFarm(player);
+    }
+
+    void OnQuestRewarded(Player* player, const Quest* quest) override
+    {
+        if (!player || !quest)
+            return;
+
+        uint32 questId = quest->GetQuestId();
+
+        // Spawn farm immediately when key progression quests are completed
+        if ((questId == 30252 || questId == 31945) && player->GetZoneId() == TillersFarmMgr::VFW_ZONE_ID)
+            sTillersFarmMgr.SpawnPlayerFarm(player);
     }
 };
 

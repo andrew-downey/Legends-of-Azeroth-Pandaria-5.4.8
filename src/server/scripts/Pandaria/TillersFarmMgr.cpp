@@ -24,7 +24,9 @@
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "World.h"
-#include <unordered_set>
+
+// Ground-level Farmer Yoon (58646) dynamically spawned in farm phase after quest 30252.
+// Tools Yoon (58721) and farmhouse Yoon (58646) are duplicates — kept as static world spawns at phase 1.
 
 // ============================================================================
 // TillersFarmMgr Implementation
@@ -139,7 +141,7 @@ bool TillersFarmMgr::LoadPlayerState(Player* player)
     return true;
 }
 
-void TillersFarmMgr::CreateSoilGos(Player* player, uint8 plotsCount)
+void TillersFarmMgr::CreateSoilGos(Player* player, uint8 plotsCount, uint32 phaseMask)
 {
     if (!player || !player->IsInWorld())
         return;
@@ -148,20 +150,20 @@ void TillersFarmMgr::CreateSoilGos(Player* player, uint8 plotsCount)
     if (!map)
         return;
 
+    uint32 guidLow = player->GetGUID().GetCounter();
+
     for (uint8 i = 0; i < plotsCount && IsValidPlotId(i); ++i)
     {
-        // Calculate position offset for each plot near the farm area
-        float offsetX = static_cast<float>(i % 4) * 5.0f - 7.5f;
-        float offsetY = static_cast<float>(i / 4) * 5.0f - 7.5f;
-
-        float posX = player->GetPositionX() + offsetX;
-        float posY = player->GetPositionY() + offsetY;
-        float posZ = player->GetPositionZ();
-        float orientation = 0.0f;
+        PlotPosition pos;
+        if (!GetPlotPosition(i, pos))
+        {
+            TC_LOG_DEBUG("scripts", "TillersFarmMgr: No plot position for plotId %u, skipping soil GO creation", i);
+            continue;
+        }
 
         GameObject* soilGo = new GameObject;
         if (!soilGo->Create(map->GenerateLowGuid<HighGuid::GameObject>(), SOIL_GO_ENTRY, map,
-            player->GetPhaseMask(), posX, posY, posZ, orientation, { }, 100, GO_STATE_READY))
+            phaseMask, pos.posX, pos.posY, pos.posZ, pos.orientation, { }, 100, GO_STATE_READY))
         {
             delete soilGo;
             continue;
@@ -171,8 +173,11 @@ void TillersFarmMgr::CreateSoilGos(Player* player, uint8 plotsCount)
         soilGo->SetSpellId(static_cast<uint32>(i));  // plotId stored as SpellId
 
         map->AddToMap(soilGo);
-        _playerSoilGOs[player->GetGUID().GetCounter()].push_back(soilGo->GetGUID());
+        _playerSoilGOs[guidLow].push_back(soilGo->GetGUID());
     }
+
+    TC_LOG_DEBUG("scripts", "TillersFarmMgr: Created %u soil GOs for player %u (plotsCount=%u)",
+                 static_cast<uint32>(_playerSoilGOs[guidLow].size()), guidLow, plotsCount);
 }
 
 void TillersFarmMgr::RemoveSoilGos(Player* player)
@@ -205,6 +210,11 @@ void TillersFarmMgr::SpawnPlayerFarm(Player* player)
     if (!player || !player->IsInWorld())
         return;
 
+    // Farm only spawns for players who completed "A Helping Hand" (30252)
+    // Pre-quest players stay in default phase and see static world spawns (58721, rocks, etc.)
+    if (!player->IsQuestRewarded(30252))
+        return;
+
     uint32 guidLow = player->GetGUID().GetCounter();
 
     // Check if farm is already spawned (avoid double-spawn)
@@ -214,9 +224,29 @@ void TillersFarmMgr::SpawnPlayerFarm(Player* player)
         auto it = _playerPlots.find(guidLow);
         if (it != _playerPlots.end() && !it->second.empty())
         {
+            // Upgrade path: if Gina's Vote (31945) was just completed, create soil GOs
+            if (player->IsQuestRewarded(31945))
+            {
+                auto soilIt = _playerSoilGOs.find(guidLow);
+                if (soilIt == _playerSoilGOs.end() || soilIt->second.empty())
+                {
+                    uint32 phaseMask = static_cast<uint32>((guidLow << 8) | (_playerStates[guidLow].farmPhase + 1));
+                    TC_LOG_DEBUG("scripts", "TillersFarmMgr: Upgrading farm — creating soil GOs for player %u", guidLow);
+                    CreateSoilGos(player, GetPlotsUnlockedForPhase(_playerStates[guidLow].farmPhase), phaseMask);
+                    return;
+                }
+            }
             TC_LOG_DEBUG("scripts", "TillersFarmMgr: Farm already spawned for player %u, skipping", guidLow);
             return;
         }
+    }
+
+    // Load plot positions on first call (singleton init)
+    static bool sPlotPositionsLoaded = false;
+    if (!sPlotPositionsLoaded)
+    {
+        LoadPlotPositions();
+        sPlotPositionsLoaded = true;
     }
 
     // Load state from DB
@@ -258,33 +288,43 @@ void TillersFarmMgr::SpawnPlayerFarm(Player* player)
         }
     }
 
-    // Ensure unlocked plots have SOIL_PREPARED state if they're still empty
-    for (uint8 i = 0; i < plotsCount && IsValidPlotId(i); ++i)
-    {
-        auto pit = plots.find(i);
-        if (pit != plots.end())
-        {
-            // If plot is EMPTY and should be unlocked, set to SOIL_PREPARED
-            uint8 initialUnlock = GetPlotsUnlockedForPhase(PHASE_PLANTING);
-            if (pit->second.state == PLOT_EMPTY && i < initialUnlock)
-                pit->second.state = PLOT_SOIL_PREPARED;
-
-            // If plot was growing but maturity has passed, mark ready
-            if ((pit->second.state == PLOT_SEEDED || pit->second.state == PLOT_GROWING) &&
-                pit->second.maturityTimestamp > 0 &&
-                static_cast<time_t>(time(nullptr)) >= pit->second.maturityTimestamp)
-            {
-                pit->second.state = PLOT_READY_TO_HARVEST;
-            }
-        }
-    }
+    // Compute per-player phase mask: (guid << 8) | phase
+    // No PHASEMASK_NORMAL — this isolates the farm instance to this player only
+    uint32 phaseMask = static_cast<uint32>((guidLow << 8) | (state.farmPhase + 1));
 
     // Set custom phase for this player's farm instance
-    uint32 phaseMask = static_cast<uint32>((player->GetGUID().GetCounter() << 8) | (state.farmPhase + 1));
     player->GetPhaseMgr().SetCustomPhase(phaseMask);
 
-    // Create soil GOs for unlocked plots
-    CreateSoilGos(player, plotsCount);
+    // Spawn ground-level Farmer Yoon
+    SpawnFarmerNPCs(player, phaseMask);
+
+    // Spawn Tillers Shrine
+    SpawnFarmGameObjects(player, phaseMask);
+
+    // Soil GOs only after Gina's Vote (31945) — tutorial chain uses its own soil objects
+    if (player->IsQuestRewarded(31945))
+    {
+        // Ensure unlocked plots have SOIL_PREPARED state if they're still empty
+        for (uint8 i = 0; i < plotsCount && IsValidPlotId(i); ++i)
+        {
+            auto pit = plots.find(i);
+            if (pit != plots.end())
+            {
+                uint8 initialUnlock = GetPlotsUnlockedForPhase(PHASE_PLANTING);
+                if (pit->second.state == PLOT_EMPTY && i < initialUnlock)
+                    pit->second.state = PLOT_SOIL_PREPARED;
+
+                if ((pit->second.state == PLOT_SEEDED || pit->second.state == PLOT_GROWING) &&
+                    pit->second.maturityTimestamp > 0 &&
+                    static_cast<time_t>(time(nullptr)) >= pit->second.maturityTimestamp)
+                {
+                    pit->second.state = PLOT_READY_TO_HARVEST;
+                }
+            }
+        }
+
+        CreateSoilGos(player, plotsCount, phaseMask);
+    }
 
     TC_LOG_INFO("scripts", "TillersFarmMgr: Spawned farm for player %u (phase=%u, plots=%u, phaseMask=%u)",
                 guidLow, state.farmPhase, plotsCount, phaseMask);
@@ -305,8 +345,18 @@ void TillersFarmMgr::DespawnPlayerFarm(Player* player)
     // Save all plot data before despawning
     SavePlayerFarm(player);
 
+    // Clear stale in-memory state so IsPlayerFarmSpawned() returns false on re-entry
+    _playerPlots.erase(guidLow);
+    _playerStates.erase(guidLow);
+
     // Remove soil GOs from the player's phase
     RemoveSoilGos(player);
+
+    // Despawn all dynamically spawned creatures
+    DespawnAllCreatures(player);
+
+    // Despawn farm GOs (shrine, bowls)
+    RemoveFarmGos(player);
 
     // Clear phase
     player->GetPhaseMgr().SetCustomPhase(0);
@@ -694,6 +744,7 @@ void TillersFarmMgr::ResetPlayerFarm(uint32 guidLow)
     _playerSoilGOs.erase(guidLow);
     _playerStates.erase(guidLow);
     _playerPlots.erase(guidLow);
+    _playerCreatures.erase(guidLow);
 
     // Set default state
     PlayerFarmState defaultState;
@@ -712,4 +763,253 @@ void TillersFarmMgr::ResetPlayerFarm(uint32 guidLow)
         plot.seedEntry      = 0;
         plots[i] = plot;
     }
+}
+
+void TillersFarmMgr::LoadPlotPositions()
+{
+    _plotPositions.clear();
+
+    QueryResult result = CharacterDatabase.PQuery(
+        "SELECT `data` FROM creature_template WHERE `entry` = %u",
+        PLOT_REFERENCE_CREATURE_ENTRY);
+
+    if (!result)
+    {
+        TC_LOG_ERROR("scripts", "TillersFarmMgr: No creature_template entry for plot reference creature %u",
+                     PLOT_REFERENCE_CREATURE_ENTRY);
+        return;
+    }
+
+    // Plot positions are stored in the farm area on map 870
+    // We load them from the world.creature table where map=870 and id=55626
+    // Filter to farm cluster area (position_z between 164 and 166)
+    result = WorldDatabase.PQuery(
+        "SELECT `guid`, `position_x`, `position_y`, `position_z`, `orientation` FROM `world`.`creature` "
+        "WHERE `map` = 870 AND `id` = %u AND `position_z` BETWEEN 164 AND 166 "
+        "ORDER BY `position_x`, `position_y`",
+        PLOT_REFERENCE_CREATURE_ENTRY);
+
+    if (!result)
+    {
+        TC_LOG_WARN("scripts", "TillersFarmMgr: No plot position creatures found on map 870 (entry %u, z 164-166)",
+                    PLOT_REFERENCE_CREATURE_ENTRY);
+        return;
+    }
+
+    uint8 plotId = 0;
+    do
+    {
+        Field* fields = result->Fetch();
+        PlotPosition pos;
+        pos.plotId = plotId;
+        pos.posX = fields[1].GetFloat();
+        pos.posY = fields[2].GetFloat();
+        pos.posZ = fields[3].GetFloat();
+        pos.orientation = fields[4].GetFloat();
+        _plotPositions.push_back(pos);
+        ++plotId;
+    } while (result->NextRow());
+
+    TC_LOG_INFO("scripts", "TillersFarmMgr: Loaded %zu plot positions from map 870", _plotPositions.size());
+}
+
+bool TillersFarmMgr::GetPlotPosition(uint8 plotId, PlotPosition& out) const
+{
+    if (plotId >= _plotPositions.size())
+        return false;
+    out = _plotPositions[plotId];
+    return true;
+}
+
+ObjectGuid TillersFarmMgr::SpawnCreature(Player* player, uint32 entry, uint8 plotId, bool visible, uint32 phaseMask)
+{
+    if (!player || !player->IsInWorld())
+        return ObjectGuid();
+
+    PlotPosition pos;
+    if (!GetPlotPosition(plotId, pos))
+        return ObjectGuid();
+
+    return SpawnCreatureAt(player, entry, pos.posX, pos.posY, pos.posZ, pos.orientation, visible, phaseMask);
+}
+
+void TillersFarmMgr::DespawnCreature(ObjectGuid guid, Map* map)
+{
+    if (guid.IsEmpty())
+        return;
+
+    if (!map)
+        return;
+
+    Creature* creature = map->GetCreature(guid);
+    if (!creature)
+        return;
+
+    creature->RemoveFromWorld();
+    creature->AddObjectToRemoveList();
+
+    TC_LOG_DEBUG("scripts", "TillersFarmMgr: Despawned creature %u (guid %s)",
+                 creature->GetEntry(), guid.ToString().c_str());
+}
+
+void TillersFarmMgr::DespawnAllCreatures(Player* player)
+{
+    if (!player)
+        return;
+
+    uint32 guidLow = player->GetGUID().GetCounter();
+    auto it = _playerCreatures.find(guidLow);
+    if (it == _playerCreatures.end())
+        return;
+
+    Map* map = player->GetMap();
+    if (!map)
+        return;
+
+    for (ObjectGuid const& guid : it->second)
+    {
+        Creature* creature = map->GetCreature(guid);
+        if (creature)
+        {
+            creature->RemoveFromWorld();
+            creature->AddObjectToRemoveList();
+        }
+    }
+
+    TC_LOG_DEBUG("scripts", "TillersFarmMgr: Despawned %zu creatures for player %u",
+                 it->second.size(), guidLow);
+    _playerCreatures.erase(it);
+}
+
+ObjectGuid TillersFarmMgr::SpawnCreatureAt(Player* player, uint32 entry, float posX, float posY, float posZ, float orientation, bool visible, uint32 phaseMask)
+{
+    if (!player || !player->IsInWorld())
+        return ObjectGuid();
+
+    Map* map = player->GetMap();
+    if (!map)
+        return ObjectGuid();
+
+    uint32 guidLow = player->GetGUID().GetCounter();
+
+    Creature* creature = new Creature();
+    creature->m_isTempWorldObject = true;
+
+    if (!creature->Create(map->GenerateLowGuid<HighGuid::Unit>(), map, phaseMask, entry, 0, 0, posX, posY, posZ, orientation))
+    {
+        delete creature;
+        return ObjectGuid();
+    }
+
+    // Set creature to not wander and be invisible to non-farm players
+    creature->SetWanderDistance(0.0f);
+    creature->SetDefaultMovementType(IDLE_MOTION_TYPE);
+
+    if (!visible)
+    {
+        creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+        creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+        creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+    }
+
+    creature->SetUnitFlag2(UNIT_FLAG2_UNK1);
+
+    map->AddToMap(creature);
+
+    _playerCreatures[guidLow].push_back(creature->GetGUID());
+
+    TC_LOG_DEBUG("scripts", "TillersFarmMgr: Spawned creature %u at (%.2f, %.2f, %.2f) for player %u",
+                 entry, posX, posY, posZ, guidLow);
+
+    return creature->GetGUID();
+}
+
+void TillersFarmMgr::SpawnFarmerNPCs(Player* player, uint32 farmPhaseMask)
+{
+    if (!player || !player->IsInWorld())
+        return;
+
+    // Single ground-level Farmer Yoon (58646) — the quest hub version visible after "A Helping Hand"
+    SpawnCreatureAt(player, 58646, -180.844f, 628.358f, 165.493f, 1.85448f, true, farmPhaseMask);
+
+    TC_LOG_DEBUG("scripts", "TillersFarmMgr: Spawned ground Farmer Yoon for player %u",
+                 player->GetGUID().GetCounter());
+}
+
+void TillersFarmMgr::SpawnFarmGameObjects(Player* player, uint32 phaseMask)
+{
+    if (!player || !player->IsInWorld())
+        return;
+
+    Map* map = player->GetMap();
+    if (!map)
+        return;
+
+    uint32 guidLow = player->GetGUID().GetCounter();
+
+    // Tillers Shrine (215705) — spawned dynamically in farm phase
+    {
+        GameObject* shrine = new GameObject();
+        if (shrine->Create(map->GenerateLowGuid<HighGuid::GameObject>(), 215705, map,
+            phaseMask, -187.592f, 637.087f, 165.409f, 6.23434f, { }, 300, GO_STATE_READY))
+        {
+            map->AddToMap(shrine);
+            _playerFarmGOs[guidLow].push_back(shrine->GetGUID());
+        }
+        else
+            delete shrine;
+    }
+
+    // Offering Bowls (215706) — 5 bowls encircling the shrine
+    {
+        static const struct { float x, y, z, o; } sBowlPositions[] = {
+            { -185.858f, 637.865f, 165.409f, 0.0f },
+            { -186.587f, 637.476f, 165.566f, 0.0f },
+            { -185.894f, 636.998f, 165.409f, 0.0f },
+            { -186.615f, 636.660f, 165.561f, 0.0f },
+            { -185.971f, 636.161f, 165.409f, 0.0f },
+        };
+
+        for (auto const& pos : sBowlPositions)
+        {
+            GameObject* bowl = new GameObject();
+            if (bowl->Create(map->GenerateLowGuid<HighGuid::GameObject>(), 215706, map,
+                phaseMask, pos.x, pos.y, pos.z, pos.o, { }, 300, GO_STATE_READY))
+            {
+                map->AddToMap(bowl);
+                _playerFarmGOs[guidLow].push_back(bowl->GetGUID());
+            }
+            else
+                delete bowl;
+        }
+    }
+
+    TC_LOG_DEBUG("scripts", "TillersFarmMgr: Created %zu farm GOs for player %u",
+                 _playerFarmGOs[guidLow].size(), guidLow);
+}
+
+void TillersFarmMgr::RemoveFarmGos(Player* player)
+{
+    if (!player || !player->IsInWorld())
+        return;
+
+    Map* map = player->GetMap();
+    if (!map)
+        return;
+
+    uint32 guidLow = player->GetGUID().GetCounter();
+    auto it = _playerFarmGOs.find(guidLow);
+    if (it == _playerFarmGOs.end())
+        return;
+
+    for (ObjectGuid const& guid : it->second)
+    {
+        GameObject* go = map->GetGameObject(guid);
+        if (go)
+            go->ForcedDespawn();
+    }
+
+    TC_LOG_DEBUG("scripts", "TillersFarmMgr: Removed %zu farm GOs for player %u",
+                 it->second.size(), guidLow);
+    _playerFarmGOs.erase(it);
 }

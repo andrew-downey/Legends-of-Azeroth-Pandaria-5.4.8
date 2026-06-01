@@ -26,8 +26,8 @@ INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `p
 (@CGUID+5,  66136,  1, 0, 0, 1, 1, 0, 0, 0, 0, 3364.08,   950.816,  7.4876,   3.14159, 300, 0, 0, 0, 540,    0, 0, 0, 0, 0, 0, 0, '', 0, 0),
 -- 7. Zonya the Sadist (30) -> Innkeeper Jayka (Orgrimmar, map 1)
 (@CGUID+6,  66137,  1, 0, 0, 1, 1, 0, 0, 0, 0, 897.652,   927.946,  106.364,  3.14159, 300, 0, 0, 0, 900,    0, 0, 0, 0, 0, 0, 0, '', 0, 0),
--- 8. Merda Stronghoof (32) -> Innkeeper Lyshaerya (Stonetalon, map 1)
-(@CGUID+7,  66372,  1, 0, 0, 1, 1, 0, 0, 0, 0, 259.615,   1253.76,  192.224,  3.14159, 300, 0, 0, 0, 960,    0, 0, 0, 0, 0, 0, 0, '', 0, 0),
+-- 8. Merda Stronghoof (32) -> Innkeeper Lyshaerya (Desolace, map 0, zone 405, area 4805)
+(@CGUID+7,  66372,  0, 405, 4805, 1, 1, 0, 0, 0, 0, -1047.4,    1665.7,    60.05,    6.06, 300, 0, 0, 0, 960,    0, 0, 0, 0, 0, 0, 0, '', 0, 0),
 -- 9. Cassandra Kaboom (35) -> Innkeeper Lhakadd (Camp Mojache, map 1)
 (@CGUID+8,  66422,  1, 0, 0, 1, 1, 0, 0, 0, 0, -3216.69,  -1663.86,  99.9925,  3.14159, 300, 0, 0, 0, 1050,   0, 0, 0, 0, 0, 0, 0, '', 0, 0),
 -- 10. Stone Cold Trixxy (50) -> Innkeeper Vizzie (Lost Rigger, Tanaris, map 1)

@@ -145,6 +145,7 @@ private:
     // pid values are set in constructor
     float _activityMod = 0.25;
     bool _isBotInitializing = true;
+    bool _isLoggingOut = false;
     time_t _playersCheckTimer;
     typedef void (RandomPlayerbotMgr::* ConsoleCommandHandler)(Player*);
     std::vector<Player*> _players;

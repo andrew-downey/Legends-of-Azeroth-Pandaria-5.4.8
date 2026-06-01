@@ -64,6 +64,7 @@ public:
     uint32 minRandomBotTeleportInterval, maxRandomBotTeleportInterval;
     uint32 minRandomBotInWorldTime, maxRandomBotInWorldTime;
     uint32 randomBotsPerInterval;
+    uint32 maxConcurrentBotLogins;
     float randomChangeMultiplier;
     bool randomBotLoginAtStartup;
     std::string randomBotAccountPrefix;

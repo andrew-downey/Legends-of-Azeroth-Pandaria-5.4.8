@@ -30,6 +30,8 @@
 
 class Player;
 class GameObject;
+class Creature;
+class Map;
 
 // Maximum number of plots per player farm instance (matches DB schema)
 static uint8 const TILLERS_MAX_PLOTS = 16;
@@ -98,6 +100,19 @@ struct PlayerFarmState
 
 typedef std::map<uint8, FarmPlotData> PlotMap;       // plot_id -> data
 typedef std::unordered_map<uint32, PlayerFarmState> StateStore;  // player guid low -> state
+
+// Fixed plot position on map 870 (loaded from creature table)
+struct PlotPosition
+{
+    uint8  plotId     = 0;
+    float  posX       = 0.0f;
+    float  posY       = 0.0f;
+    float  posZ       = 0.0f;
+    float  orientation = 0.0f;
+};
+
+// Creature entries used for farm visual elements
+static inline uint32 const PLOT_REFERENCE_CREATURE_ENTRY = 55626;   // Bunny — plot position reference
 
 #define TILLERS_FARM_MGR_MUTEX_BUCKETS 64
 
@@ -193,6 +208,52 @@ public:
      */
     void ResetPlayerFarm(uint32 guidLow);
 
+    /**
+     * Load plot positions from creature table (map 870, entry 55626, z~165).
+     * Returns the list of plot positions for the farm area.
+     * Called once at startup, cached in _plotPositions.
+     */
+    void LoadPlotPositions();
+
+    /**
+     * Get cached plot positions.
+     */
+    std::vector<PlotPosition> const& GetPlotPositions() const { return _plotPositions; }
+
+    /**
+     * Get plot position by plot ID. Returns true if found.
+     */
+    bool GetPlotPosition(uint8 plotId, PlotPosition& out) const;
+
+    /**
+     * Spawn a creature dynamically at a plot position for this player's phase.
+     * Returns the spawned creature GUID.
+     */
+    ObjectGuid SpawnCreature(Player* player, uint32 entry, uint8 plotId, bool visible, uint32 phaseMask);
+
+    /**
+     * Spawn a creature at fixed world coordinates.
+     * Returns the spawned creature GUID.
+     */
+    ObjectGuid SpawnCreatureAt(Player* player, uint32 entry, float posX, float posY, float posZ, float orientation, bool visible, uint32 phaseMask);
+
+    /**
+     * Despawn a creature by GUID.
+     */
+    void DespawnCreature(ObjectGuid guid, Map* map);
+
+    /**
+     * Despawn all dynamically spawned creatures for a player.
+     */
+    void DespawnAllCreatures(Player* player);
+
+    /**
+     * Calculate maturity timestamp based on seed type and current growth stage.
+     */
+    time_t GetMaturityTime(uint32 seedEntry, uint8 plotId);
+
+    void SpawnFarmerNPCs(Player* player, uint32 farmPhaseMask);
+
     /** Validate that a plot ID is within bounds for the current farm configuration. */
     static bool IsValidPlotId(uint8 plotId) { return plotId < TILLERS_MAX_PLOTS; }
 
@@ -218,7 +279,7 @@ private:
     /**
      * Create soil GameObjects for each unlocked plot in the player's phase.
      */
-    void CreateSoilGos(Player* player, uint8 plotsCount);
+    void CreateSoilGos(Player* player, uint8 plotsCount, uint32 phaseMask);
 
     /**
      * Remove all soil GameObjects for a player from their phase.
@@ -226,9 +287,14 @@ private:
     void RemoveSoilGos(Player* player);
 
     /**
-     * Calculate maturity timestamp based on seed type and current growth stage.
+     * Spawn Tillers Shrine and Offering Bowls in the player's farm phase.
      */
-    time_t GetMaturityTime(uint32 seedEntry, uint8 /*plotId*/);
+    void SpawnFarmGameObjects(Player* player, uint32 phaseMask);
+
+    /**
+     * Remove all farm GameObjects (shrine, bowls) for a player.
+     */
+    void RemoveFarmGos(Player* player);
 
     // Player state storage: guid low -> farm phase info
     StateStore _playerStates;
@@ -238,6 +304,15 @@ private:
 
     // Soil GO GUID tracking: guidLow -> list of spawned soil GO GUIDs for removal
     std::unordered_map<uint32, std::vector<ObjectGuid>> _playerSoilGOs;
+
+    // Creature GUID tracking: guidLow -> list of spawned creature GUIDs for removal
+    std::unordered_map<uint32, std::vector<ObjectGuid>> _playerCreatures;
+
+    // Cached plot positions loaded from creature table (map 870, entry 55626)
+    std::vector<PlotPosition> _plotPositions;
+
+    // Farm GO tracking: guidLow -> list of spawned farm GO GUIDs (shrine, bowls, etc.)
+    std::unordered_map<uint32, std::vector<ObjectGuid>> _playerFarmGOs;
 
     // 64-bucket striped mutex for thread-safe per-player access
     std::mutex _mutexes[TILLERS_FARM_MGR_MUTEX_BUCKETS];

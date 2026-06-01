@@ -2093,6 +2093,7 @@ void AddPandariaScripts()
     AddTillersZoneHooks();
     AddTillersSoilScript();
     AddTillersWorkstation();
+    AddTillersCommands();
     AddSC_dread_wastes();
     AddSC_timeless_isle();
     AddSC_wandering_island_east();

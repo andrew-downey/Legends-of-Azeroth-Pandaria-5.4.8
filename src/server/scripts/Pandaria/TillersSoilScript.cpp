@@ -77,7 +77,7 @@ public:
         FarmPlotData& plot = pit->second;
         PlayerFarmState& state = sTillersFarmMgr.GetPlayerState(player->GetGUID().GetCounter());
 
-        bool plotsUnlocked = (plotId < GetPlotsUnlockedForPhase(state.farmPhase));
+        bool plotsUnlocked = (plotId < GetPlotsUnlockedForFarmState(state.farmState));
         if (!plotsUnlocked)
         {
             player->GetSession()->SendNotification("This plot is not yet available.");
@@ -110,7 +110,7 @@ public:
             }
 
             // Validate plot is unlocked
-            uint8 plotsUnlockedCount = GetPlotsUnlockedForPhase(state.farmPhase);
+            uint8 plotsUnlockedCount = GetPlotsUnlockedForFarmState(state.farmState);
             if (plotId >= plotsUnlockedCount)
             {
                 player->GetSession()->SendNotification("This plot is not yet unlocked.");

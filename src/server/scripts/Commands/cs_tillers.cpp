@@ -33,7 +33,7 @@ public:
             {
                 { "status",   SEC_ADMINISTRATOR, true,  &HandleTillersStatusCommand,       "" },
                 { "reset",    SEC_ADMINISTRATOR, false, &HandleTillersResetCommand,        "" },
-                { "setphase", SEC_ADMINISTRATOR, true,  &HandleTillersSetPhaseCommand,     "" },
+                { "setplots", SEC_ADMINISTRATOR, true,  &HandleTillersSetPlotsCommand,     "" },
                 { "grow",     SEC_ADMINISTRATOR, false, &HandleTillersGrowCommand,         "" },
             }},
         };
@@ -56,9 +56,9 @@ private:
        PlotMap& plots = sTillersFarmMgr.GetPlayerPlots(target);
          PlayerFarmState const& state = sTillersFarmMgr.GetPlayerState(guidLow);
 
-        handler->PSendSysMessage("|cFF00FF00=== Tillers Farm Status for %s ===|r", target->GetName().c_str());
-        handler->PSendSysMessage("  Farm Phase:       %u (%s)", state.farmPhase, GetFarmPhaseName(state.farmPhase).c_str());
-       handler->PSendSysMessage("  Plots Unlocked:   %u / 16", state.plotsUnlocked);
+handler->PSendSysMessage("|cFF00FF00=== Tillers Farm Status for %s ===|r", target->GetName().c_str());
+        handler->PSendSysMessage("  Farm State:       %u (%s)", state.farmState, GetFarmStateName(state.farmState).c_str());
+        handler->PSendSysMessage("  Plots Unlocked:   %u / 16", state.plotsUnlocked);
 
         handler->PSendSysMessage("");
         handler->PSendSysMessage("  Plot States:");
@@ -105,7 +105,7 @@ private:
 
     /**
      * .tillers reset [player]
-     * Resets the target player's farm to initial state (all plots empty, phase 1).
+     * Resets the target player's farm to initial state (all plots empty, 4 plots).
      */
     static bool HandleTillersResetCommand(ChatHandler* handler, const char* /*args*/)
     {
@@ -119,32 +119,32 @@ private:
         sTillersFarmMgr.ResetPlayerFarm(guidLow);
 
         handler->PSendSysMessage("|cFF00FF00Tillers farm reset for %s.|r", target->GetName().c_str());
-        handler->PSendSysMessage("  Farm has been reset to phase 1 with all plots empty.");
+        handler->PSendSysMessage("  Farm has been reset to initial state with 4 plots and all plots empty.");
 
         return true;
     }
 
     /**
-     * .tillers setphase <player> <phase>
-     * Sets a player's farm phase directly (1-16).
+     * .tillers setplots <player> <plots>
+     * Sets a player's farm plots directly (0/4/8/12/16).
+     * 0 = reset to initial state (4 plots, all empty).
      */
-    static bool HandleTillersSetPhaseCommand(ChatHandler* handler, const char* args)
+    static bool HandleTillersSetPlotsCommand(ChatHandler* handler, const char* args)
     {
         char* playerStr = nullptr;
-        char* phaseStr = nullptr;
-        handler->extractOptFirstArg((char*)args, &playerStr, &phaseStr);
+        char* plotsStr = nullptr;
+        handler->extractOptFirstArg((char*)args, &playerStr, &plotsStr);
 
-        if (!phaseStr)
+        if (!plotsStr)
         {
-            handler->PSendSysMessage("You must specify a phase value.");
+            handler->PSendSysMessage("You must specify a plots value (0/4/8/12/16).");
             return false;
         }
 
-        uint8 newPhase = static_cast<uint8>(atoi(phaseStr));
-        if (newPhase < PHASE_PLANTING || newPhase > PHASE_LEGENDARY_CROPS)
+        uint8 newPlots = static_cast<uint8>(atoi(plotsStr));
+        if (newPlots != 0 && newPlots != 4 && newPlots != 8 && newPlots != 12 && newPlots != 16)
         {
-            handler->PSendSysMessage("Invalid phase. Must be between %u and %u.",
-                PHASE_PLANTING, PHASE_LEGENDARY_CROPS);
+            handler->PSendSysMessage("Invalid plots. Must be one of: 0, 4, 8, 12, 16.");
             return false;
         }
 
@@ -154,18 +154,33 @@ private:
 
         uint32 guidLow = target->GetGUID().GetCounter();
 
-        // Get or create state, then set phase
+        // Get or create state
         PlotMap& plots = sTillersFarmMgr.GetPlayerPlots(target);
         PlayerFarmState& state = sTillersFarmMgr.GetPlayerState(guidLow);
 
-        uint8 oldPhase = state.farmPhase;
-        state.farmPhase = newPhase;
-        state.plotsUnlocked = GetPlotsUnlockedForPhase(newPhase);
+        uint8 oldPlots = state.plotsUnlocked;
+        uint8 oldState = state.farmState;
 
-        handler->PSendSysMessage("|cFF00FF00Tillers farm phase set for %s.|r", target->GetName().c_str());
-        handler->PSendSysMessage("  Phase: %u (%s) -> %u (%s)", oldPhase,
-            GetFarmPhaseName(oldPhase).c_str(), newPhase,
-            GetFarmPhaseName(newPhase).c_str());
+        if (newPlots == 0)
+        {
+            // Reset: clear everything
+            sTillersFarmMgr.ResetPlayerFarm(guidLow);
+            state = sTillersFarmMgr.GetPlayerState(guidLow);
+            plots = sTillersFarmMgr.GetPlayerPlots(target);
+            newPlots = 4;
+        }
+        else
+        {
+            state.farmState = GetFarmStateForPlots(newPlots);
+            state.plotsUnlocked = newPlots;
+        }
+
+        // Rebuild farm from state via SpawnPlayerFarm
+        sTillersFarmMgr.SpawnPlayerFarm(target);
+
+        handler->PSendSysMessage("|cFF00FF00Tillers farm plots set for %s.|r", target->GetName().c_str());
+        handler->PSendSysMessage("  Plots: %u -> %u (farmState: %u -> %u)",
+            oldPlots, newPlots, oldState, state.farmState);
 
         return true;
     }
@@ -205,27 +220,14 @@ private:
         }
     }
 
-    static std::string GetFarmPhaseName(uint8 phase)
+    static std::string GetFarmStateName(uint8 farmState)
     {
-        switch (phase)
+        switch (farmState)
         {
-            case PHASE_UNAVAILABLE:       return "Unavailable";
-            case PHASE_PLANTING:          return "Planting";
-            case PHASE_GROWING:           return "Growing";
-            case PHASE_HARVESTING:        return "Harvesting";
-            case PHASE_FERTILIZING:       return "Fertilizing";
-            case PHASE_IRRIGATION:        return "Irrigation";
-            case PHASE_COMPOSTING:        return "Composting";
-            case PHASE_ENRICHMENT:        return "Enrichment";
-            case PHASE_CROP_ROTATION:     return "Crop Rotation";
-            case PHASE_SEED_BREEDING:     return "Seed Breeding";
-            case PHASE_HYBRID_CROPS:      return "Hybrid Crops";
-            case PHASE_GREENHOUSE:        return "Greenhouse";
-            case PHASE_TERRACED_FARMING:  return "Terraced Farming";
-            case PHASE_MASS_PRODUCTION:   return "Mass Production";
-            case PHASE_COMMERCIAL_AGRIC:    return "Commercial Agri";
-            case PHASE_EXPORT_QUALITY:    return "Export Quality";
-            case PHASE_LEGENDARY_CROPS:   return "Legendary Crops";
+            case FARM_STATE_FULL:         return "Full (4 plots)";
+            case FARM_STATE_WEEDS_CLEARED: return "Weeds Cleared (8 plots)";
+            case FARM_STATE_WAGON_CLEARED: return "Wagon Cleared (12 plots)";
+            case FARM_STATE_ALL_CLEARED:  return "All Cleared (16 plots)";
             default:                      return "Unknown";
         }
     }

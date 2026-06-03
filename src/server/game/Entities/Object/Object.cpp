@@ -1397,7 +1397,7 @@ void MovementInfo::OutDebug()
 WorldObject::WorldObject(bool isWorldObject): Object(), WorldLocation(), LastUsedScriptID(0),
 m_name(""), m_isActive(false), m_isWorldObject(isWorldObject), m_zoneScript(nullptr),
 m_transport(nullptr), m_zoneId(0), m_areaId(0), m_outdoors(false), m_liquidStatus(LIQUID_MAP_NO_WATER),
-m_currMap(nullptr), m_InstanceId(0), m_phaseMask(PHASEMASK_NORMAL), m_explicitSeerGuid(),
+m_currMap(nullptr), m_InstanceId(0), m_phaseMask(PHASEMASK_NORMAL), m_visibilityLayer(0), m_explicitSeerGuid(),
 m_stealthVisibilityUpdateTimer(STEALTH_VISIBILITY_UPDATE_TIMER)
 {
     m_serverSideVisibility.SetValue(SERVERSIDE_VISIBILITY_GHOST, GHOST_VISIBILITY_ALIVE | GHOST_VISIBILITY_GHOST);

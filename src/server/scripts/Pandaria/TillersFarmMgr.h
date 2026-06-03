@@ -48,37 +48,38 @@ enum FarmPlotState : uint8
     PLOT_BROKEN             = 7
 };
 
-enum FarmPhase : uint8
+// Farm state bitmask values — each bit represents an obstacle type
+// visibility: (playerPhase & obstaclePhase) != 0
+// Obstacle phaseMasks: weeds=2, wagon=4, boulder=8
+enum FarmState : uint8
 {
-    PHASE_UNAVAILABLE       = 0,
-    PHASE_PLANTING          = 1,
-    PHASE_GROWING           = 2,
-    PHASE_HARVESTING        = 3,
-    PHASE_FERTILIZING       = 4,
-    PHASE_IRRIGATION        = 5,
-    PHASE_COMPOSTING        = 6,
-    PHASE_ENRICHMENT        = 7,
-    PHASE_CROP_ROTATION     = 8,
-    PHASE_SEED_BREEDING     = 9,
-    PHASE_HYBRID_CROPS      = 10,
-    PHASE_GREENHOUSE        = 11,
-    PHASE_TERRACED_FARMING  = 12,
-    PHASE_MASS_PRODUCTION   = 13,
-    PHASE_COMMERCIAL_AGRIC  = 14,
-    PHASE_EXPORT_QUALITY    = 15,
-    PHASE_LEGENDARY_CROPS   = 16
+    FARM_STATE_FULL              = 14,   // 0b1110 — all obstacles (4 plots)
+    FARM_STATE_WEEDS_CLEARED     = 12,   // 0b1100 — wagon + boulder (8 plots)
+    FARM_STATE_WAGON_CLEARED     = 8,    // 0b1000 — boulder only (12 plots)
+    FARM_STATE_ALL_CLEARED       = 0     // 0b0000 — no obstacles (16 plots)
 };
 
-// Number of plots unlocked per phase group: phases 1-4 unlock 4, 5-8 unlock 8, etc.
-inline uint8 GetPlotsUnlockedForPhase(uint8 phase)
+inline uint8 GetPlotsUnlockedForFarmState(uint8 farmState)
 {
-    if (phase <= 0 || phase > PHASE_LEGENDARY_CROPS)
-        return 0;
-    // Each group of 4 phases unlocks 4 more plots: 4, 8, 12, or 16
-    uint8 plots = ((phase - 1) / 4 + 1) * 4;
-    if (plots > TILLERS_MAX_PLOTS)
-        plots = TILLERS_MAX_PLOTS;
-    return plots;
+    switch (farmState)
+    {
+        case FARM_STATE_FULL:       return 4;
+        case FARM_STATE_WEEDS_CLEARED: return 8;
+        case FARM_STATE_WAGON_CLEARED: return 12;
+        case FARM_STATE_ALL_CLEARED: return 16;
+        default:                    return 0;
+    }
+}
+
+inline uint8 GetFarmStateForPlots(uint8 plots)
+{
+    if (plots <= 4)
+        return FARM_STATE_FULL;
+    if (plots <= 8)
+        return FARM_STATE_WEEDS_CLEARED;
+    if (plots <= 12)
+        return FARM_STATE_WAGON_CLEARED;
+    return FARM_STATE_ALL_CLEARED;
 }
 
 struct FarmPlotData
@@ -93,8 +94,8 @@ struct FarmPlotData
 
 struct PlayerFarmState
 {
-    uint8   farmPhase       = PHASE_PLANTING;
-    uint8   plotsUnlocked   = 4;        // number of unlocked patches (matches DB default)
+    uint8   farmState       = FARM_STATE_FULL;
+    uint8   plotsUnlocked   = 4;        // number of unlocked patches
     time_t  lastGrowthTick  = 0;        // absolute timestamp for drift-free scheduling
 };
 
@@ -109,6 +110,34 @@ struct PlotPosition
     float  posY       = 0.0f;
     float  posZ       = 0.0f;
     float  orientation = 0.0f;
+};
+
+// Obstacle spawn data loaded from gameobject table
+struct ObstacleSpawnData
+{
+    uint32 entry = 0;
+    float posX = 0.0f;
+    float posY = 0.0f;
+    float posZ = 0.0f;
+    float orientation = 0.0f;
+
+    bool IsWeed() const
+    {
+        return entry == 210443 || entry == 210444 || entry == 210445 ||
+               entry == 210446 || entry == 210447 || entry == 210448 || entry == 210462;
+    }
+    bool IsWagon() const { return entry == 210451; }
+    bool IsBoulder() const { return entry == 209572; }
+};
+
+// Yoon spawn data loaded from creature table
+struct YoonSpawnData
+{
+    bool loaded = false;
+    float posX = 0.0f;
+    float posY = 0.0f;
+    float posZ = 0.0f;
+    float orientation = 0.0f;
 };
 
 // Creature entries used for farm visual elements
@@ -226,36 +255,17 @@ public:
     bool GetPlotPosition(uint8 plotId, PlotPosition& out) const;
 
     /**
-     * Spawn a creature dynamically at a plot position for this player's phase.
-     * Returns the spawned creature GUID.
-     */
-    ObjectGuid SpawnCreature(Player* player, uint32 entry, uint8 plotId, bool visible, uint32 phaseMask);
-
-    /**
-     * Spawn a creature at fixed world coordinates.
-     * Returns the spawned creature GUID.
-     */
-    ObjectGuid SpawnCreatureAt(Player* player, uint32 entry, float posX, float posY, float posZ, float orientation, bool visible, uint32 phaseMask);
-
-    /**
-     * Despawn a creature by GUID.
-     */
-    void DespawnCreature(ObjectGuid guid, Map* map);
-
-    /**
-     * Despawn all dynamically spawned creatures for a player.
-     */
-    void DespawnAllCreatures(Player* player);
-
-    /**
      * Calculate maturity timestamp based on seed type and current growth stage.
      */
     time_t GetMaturityTime(uint32 seedEntry, uint8 plotId);
 
-    void SpawnFarmerNPCs(Player* player, uint32 farmPhaseMask);
-
     /** Validate that a plot ID is within bounds for the current farm configuration. */
     static bool IsValidPlotId(uint8 plotId) { return plotId < TILLERS_MAX_PLOTS; }
+
+    /**
+     * Get cached obstacle spawn positions.
+     */
+    std::vector<ObstacleSpawnData> const& GetObstaclePositions() const { return _obstaclePositions; }
 
 private:
     TillersFarmMgr() = default;
@@ -287,14 +297,37 @@ private:
     void RemoveSoilGos(Player* player);
 
     /**
-     * Spawn Tillers Shrine and Offering Bowls in the player's farm phase.
+     * Spawn ground-level Farmer Yoon in the player's farm phase.
      */
-    void SpawnFarmGameObjects(Player* player, uint32 phaseMask);
+    void SpawnYoon(Player* player, uint32 phaseMask);
 
     /**
-     * Remove all farm GameObjects (shrine, bowls) for a player.
+     * Remove all dynamically spawned farm creatures (Yoon).
      */
-    void RemoveFarmGos(Player* player);
+    void RemoveSpawnedCreatures(Player* player);
+
+    /**
+     * Spawn farm obstacles (weeds, wagon, boulder) based on farmState.
+     * Only creates GOs whose type is still visible at the current farmState.
+     */
+    void SpawnObstacles(Player* player, uint8 farmState, uint32 phaseMask);
+
+    /**
+     * Remove all dynamically spawned farm obstacles.
+     */
+    void RemoveObstacles(Player* player);
+
+    /**
+     * Load ground-level Yoon spawn position from creature table.
+     * Called once at startup, cached in _yoonSpawnData.
+     */
+    void LoadYoonPosition();
+
+    /**
+     * Load obstacle positions from gameobject table.
+     * Called once at startup, cached in _obstaclePositions.
+     */
+    void LoadObstaclePositions();
 
     // Player state storage: guid low -> farm phase info
     StateStore _playerStates;
@@ -305,14 +338,20 @@ private:
     // Soil GO GUID tracking: guidLow -> list of spawned soil GO GUIDs for removal
     std::unordered_map<uint32, std::vector<ObjectGuid>> _playerSoilGOs;
 
-    // Creature GUID tracking: guidLow -> list of spawned creature GUIDs for removal
-    std::unordered_map<uint32, std::vector<ObjectGuid>> _playerCreatures;
+    // Spawned creature tracking: guidLow -> list of spawned creature GUIDs for removal
+    std::unordered_map<uint32, std::vector<ObjectGuid>> _playerSpawnedCreatures;
+
+    // Obstacle GO tracking: guidLow -> list of spawned obstacle GO GUIDs for removal
+    std::unordered_map<uint32, std::vector<ObjectGuid>> _playerObstacleGOs;
 
     // Cached plot positions loaded from creature table (map 870, entry 55626)
     std::vector<PlotPosition> _plotPositions;
 
-    // Farm GO tracking: guidLow -> list of spawned farm GO GUIDs (shrine, bowls, etc.)
-    std::unordered_map<uint32, std::vector<ObjectGuid>> _playerFarmGOs;
+    // Cached Yoon spawn position loaded from creature table
+    YoonSpawnData _yoonSpawnData;
+
+    // Cached obstacle positions loaded from gameobject table
+    std::vector<ObstacleSpawnData> _obstaclePositions;
 
     // 64-bucket striped mutex for thread-safe per-player access
     std::mutex _mutexes[TILLERS_FARM_MGR_MUTEX_BUCKETS];
@@ -321,6 +360,9 @@ public:
     // Soil GO entry
     static inline uint32 const SOIL_GO_ENTRY = 186314;
 
+    // Farm NPC entries
+    static inline uint32 const FARMER_YOON_ENTRY = 58646;
+
     // Tool item entries (publicly accessible from scripts)
     static inline uint32 const WATERING_CAN_ITEM = 79104;
     static inline uint32 const BUG_SPRAYER_ITEM  = 80513;
@@ -328,6 +370,9 @@ public:
 
     // Valley of Four Winds zone ID
     static inline uint32 const VFW_ZONE_ID = 1023;
+
+    // Public farm mask — static farm objects visible to pre-farm players via phase definition
+    static inline uint32 const PUBLIC_FARM_MASK = 128;
 };
 
 #define sTillersFarmMgr TillersFarmMgr::getInstance()

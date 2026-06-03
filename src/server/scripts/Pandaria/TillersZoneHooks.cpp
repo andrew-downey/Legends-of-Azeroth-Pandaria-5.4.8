@@ -30,6 +30,11 @@ public:
         if (newZone != TillersFarmMgr::VFW_ZONE_ID)
             return;
 
+        // Only spawn farm for players who have completed the entry quest
+        // Pre-30252 players interact with the static ground Yoon at PUBLIC_FARM_MASK
+        if (!player->IsQuestRewarded(30252))
+            return;
+
         // Check if farm is not yet spawned for this player
         if (!sTillersFarmMgr.IsPlayerFarmSpawned(player))
             sTillersFarmMgr.SpawnPlayerFarm(player);
@@ -57,8 +62,44 @@ public:
         uint32 questId = quest->GetQuestId();
 
         // Spawn farm immediately when key progression quests are completed
-        if ((questId == 30252 || questId == 31945) && player->GetZoneId() == TillersFarmMgr::VFW_ZONE_ID)
+        if ((questId == 30252 || questId == 30256) && player->GetZoneId() == TillersFarmMgr::VFW_ZONE_ID)
             sTillersFarmMgr.SpawnPlayerFarm(player);
+
+        // Update farm state based on obstacle-clearing quests
+        if (player->GetZoneId() == TillersFarmMgr::VFW_ZONE_ID)
+        {
+            uint32 guidLow = player->GetGUID().GetCounter();
+            PlayerFarmState& state = sTillersFarmMgr.GetPlayerState(guidLow);
+            uint8 oldState = state.farmState;
+            uint8 newState = oldState;
+
+            switch (questId)
+            {
+                case 30516: // Growing the Farm I: A Little Problem (weeds cleared)
+                    newState = FARM_STATE_WEEDS_CLEARED;
+                    break;
+                case 30524: // Growing the Farm II: Knock on Wood (wagon cleared)
+                    newState = FARM_STATE_WAGON_CLEARED;
+                    break;
+                case 30529: // Growing the Farm III: The Mossy Boulder (all cleared)
+                    newState = FARM_STATE_ALL_CLEARED;
+                    break;
+                default:
+                    return;
+            }
+
+            if (newState != oldState)
+            {
+                state.farmState = newState;
+                state.plotsUnlocked = GetPlotsUnlockedForFarmState(newState);
+
+                // Rebuild farm from state (Scene Builder handles phase + objects)
+                sTillersFarmMgr.SpawnPlayerFarm(player);
+
+                TC_LOG_INFO("scripts", "TillersZoneHooks: Player %u farm state changed: %u -> %u (plots: %u)",
+                    guidLow, oldState, newState, state.plotsUnlocked);
+            }
+        }
     }
 };
 

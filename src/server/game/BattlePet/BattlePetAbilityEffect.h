@@ -91,6 +91,8 @@ public:
     void HandleWeatherAura();
 
 private:
+    bool IsTriggerDelayedActivation() const;
+
     uint32 m_abilityId = 0;
     uint8 m_abilityFamily = 0;
     PetBattleEffectFlags m_flags = PetBattleEffectFlags(0);

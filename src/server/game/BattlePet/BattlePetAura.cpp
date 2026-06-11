@@ -56,12 +56,8 @@ void BattlePetAura::OnExpire()
 
 void BattlePetAura::Process()
 {
-    // expire aura if it has reached max duration
-    if (m_duration != -1 && m_turn > m_maxDuration && !m_expired)
-    {
-        Expire();
-        return;
-    }
+    // check if we should expire this aura (after processing effects)
+    bool shouldExpire = (m_duration != -1 && m_turn > m_maxDuration && !m_expired);
 
     // handle aura effects
     if (auto abilityEntry = sBattlePetAbilityStore.LookupEntry(m_ability))
@@ -109,6 +105,13 @@ void BattlePetAura::Process()
         }
     }
 
+    // expire aura if it has reached max duration (after processing effects)
+    if (shouldExpire)
+    {
+        Expire();
+        return;
+    }
+
     // notify client of aura update
     // Sometimes has turn and stack depth
     PetBattleEffect effect(PET_BATTLE_EFFECT_AURA_CHANGE, m_caster->GetGlobalIndex());
@@ -137,7 +140,7 @@ void BattlePetAura::Expire()
     m_petBattle->AddEffect(effect);
 
     // cast any removal procs the ability might have
-    m_petBattle->Cast(m_target, m_ability, m_turn, PET_BATTLE_ABILITY_PROC_ON_AURA_REMOVED);
+    m_petBattle->Cast(m_caster, m_ability, m_turn, PET_BATTLE_ABILITY_PROC_ON_AURA_REMOVED);
 
     OnExpire();
 }

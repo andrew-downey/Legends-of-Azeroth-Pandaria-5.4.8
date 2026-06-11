@@ -487,6 +487,7 @@ void PetBattle::EndBattle(PetBattleTeam* lostTeam, bool forfeit)
 
         if (auto player = team->GetOwner())
         {
+            // First pass: forfeit HP reduction and XP calculation (needed before final round packet)
             for (auto&& battlePet : team->BattlePets)
             {
                 // make sure battle wasn't forcefully ended
@@ -515,7 +516,7 @@ void PetBattle::EndBattle(PetBattleTeam* lostTeam, bool forfeit)
                             // level difference roof capped at +2
                             if (levelDifference > 2)
                                 levelDifference = 2;
-                            // level difference floor capped at -4
+                            // level difference roof capped at -4
                             else if (levelDifference < -4)
                                 levelDifference = -4;
 
@@ -524,7 +525,22 @@ void PetBattle::EndBattle(PetBattleTeam* lostTeam, bool forfeit)
 
                         battlePet->SetXP(xp);
                     }
+                }
+            }
 
+            // send final round packet BEFORE processing rewards
+            if (!m_winningTeam)
+                // instant battle end
+                SendFinished(player);
+            else
+                // delayed battle end and statistics are displayed
+                SendFinalRound(player);
+
+            // Second pass: update battle pet clientside after final round packet
+            for (auto&& battlePet : team->BattlePets)
+            {
+                if (m_winningTeam)
+                {
                     // update battle pet clientside
                     player->GetBattlePetMgr().SendBattlePetUpdate(battlePet, false);
                 }
@@ -580,14 +596,6 @@ void PetBattle::EndBattle(PetBattleTeam* lostTeam, bool forfeit)
 
             player->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_IMMUNE_TO_NPC);
             player->SetControlled(false, UNIT_STATE_ROOT);
-
-            // alert client of pet battle end
-            if (!m_winningTeam)
-                // instant battle end
-                SendFinished(player);
-            else
-                // delayed battle end and statistics are displayed
-                SendFinalRound(player);
         }
 
         if (auto creature = team->GetWildBattlePet())
@@ -608,6 +616,8 @@ void PetBattle::EndBattle(PetBattleTeam* lostTeam, bool forfeit)
 
 void PetBattle::HandleRound()
 {
+    bool swappedThisRound[PET_BATTLE_MAX_TEAMS] = { false, false };
+
     for (auto&& team : m_teams)
     {
         auto pendingMove = team->GetPendingMove();
@@ -631,13 +641,24 @@ void PetBattle::HandleRound()
             case PET_BATTLE_MOVE_TYPE_SWAP_OR_PASS:
             {
                 if (team->CanSwap(pendingMove.BattlePet))
+                {
                     SwapActivePet(pendingMove.BattlePet);
+                    swappedThisRound[team->GetTeamIndex()] = true;
+
+                    // Signal to the client that the new pet can't act this round
+                    PetBattleEffect skipTurnEffect{ PET_BATTLE_EFFECT_ACTIVE_PET, team->GetActivePet()->GetGlobalIndex(), PET_BATTLE_EFFECT_FLAG_SKIP_TURN };
+                    skipTurnEffect.SetActivePet(team->GetActivePet()->GetGlobalIndex());
+                    m_effects.push_back(skipTurnEffect);
+                }
                 break;
             }
             case PET_BATTLE_MOVE_TYPE_SWAP_DEAD_PET:
             {
                 if (team->CanSwap(pendingMove.BattlePet, true))
+                {
                     SwapActivePet(pendingMove.BattlePet, true);
+                    swappedThisRound[team->GetTeamIndex()] = true;
+                }
                 break;
             }
             default:
@@ -669,18 +690,24 @@ void PetBattle::HandleRound()
     secondTeam->SetTurn(2);
 
     // cast abilities that have round start proc type (example: Deflection(490))
-    firstTeam->DoCasts(PET_BATTLE_ABILITY_PROC_ON_ROUND_START);
-    secondTeam->DoCasts(PET_BATTLE_ABILITY_PROC_ON_ROUND_START);
+    if (!swappedThisRound[firstTeam->GetTeamIndex()])
+        firstTeam->DoCasts(PET_BATTLE_ABILITY_PROC_ON_ROUND_START);
+    if (!swappedThisRound[secondTeam->GetTeamIndex()])
+        secondTeam->DoCasts(PET_BATTLE_ABILITY_PROC_ON_ROUND_START);
 
     // cast non proc abilities
-    firstTeam->DoCasts();
-    secondTeam->DoCasts();
+    if (!swappedThisRound[firstTeam->GetTeamIndex()])
+        firstTeam->DoCasts();
+    if (!swappedThisRound[secondTeam->GetTeamIndex()])
+        secondTeam->DoCasts();
 
     // -------------------------------------------------------------------------------
 
     // cast abilities that have round end proc type
-    firstTeam->DoCasts(PET_BATTLE_ABILITY_PROC_ON_ROUND_END);
-    secondTeam->DoCasts(PET_BATTLE_ABILITY_PROC_ON_ROUND_END);
+    if (!swappedThisRound[firstTeam->GetTeamIndex()])
+        firstTeam->DoCasts(PET_BATTLE_ABILITY_PROC_ON_ROUND_END);
+    if (!swappedThisRound[secondTeam->GetTeamIndex()])
+        secondTeam->DoCasts(PET_BATTLE_ABILITY_PROC_ON_ROUND_END);
 
     bool hasAuras = firstTeam->HasAuras() || secondTeam->HasAuras();
     if (hasAuras)

@@ -18773,6 +18773,8 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
     SetFloatValue(UNIT_FIELD_HOVER_HEIGHT, 1.0f);
 
     // load achievements before anything else to prevent multiple gains for the same achievement/criteria on every loading (as loading does call UpdateAchievementCriteria)
+    // Load account achievement data before character achievements so AccountAchievementMgr has correct criteria progress loaded from DB
+    GetSession()->LoadGlobalAccountData();
     m_achievementMgr->LoadFromDB(holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_ACHIEVEMENTS), holder.GetPreparedResult(PLAYER_LOGIN_QUERY_LOAD_CRITERIA_PROGRESS));
 
     uint64 money = fields[8].GetUInt64();

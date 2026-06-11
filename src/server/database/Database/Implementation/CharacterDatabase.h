@@ -640,6 +640,7 @@ enum CharacterDatabaseStatements : uint32
 
     // Tillers farm system (player_farm_state and player_farm_plots tables)
     CHAR_DEL_PLAYER_FARM_PLOTS,
+    CHAR_INS_PLAYER_FARM_STATE,
     CHAR_INS_PLAYER_FARM_PLOT,
     CHAR_UPD_PLAYER_FARM_STATE,
     CHAR_UPD_PLAYER_FARM_PLOT_PLANT,

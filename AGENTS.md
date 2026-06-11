@@ -87,7 +87,7 @@ The goal is to be as close to retail WoW 5.4.8 (Blizzlike) as possible. When imp
 
 ## Pet Battle System
 
-Full documentation in `PETBATTLES.md`. Key rule: `HandleRound()` should NEVER auto-swap pets. Pet death swaps belong in `TurnFinished()` or via client input.
+Full documentation in `BATTLEPETS.md`. Key rule: `HandleRound()` should NEVER auto-swap pets. Pet death swaps belong in `TurnFinished()` or via client input.
 
 ## SmartAI (SAI)
 
@@ -103,3 +103,91 @@ Full reference in `SAI.md`. Three patterns that come up most often:
 - **NEVER** start a build unless the user explicitly asks for it.
 - **ALWAYS** use `./build.sh` in the local project directory for any build operations (it handles ccache + gold linker + correct flags).
 - **ALWAYS** save database writes as SQL migration files in `sql/updates/world/` or `sql/updates/characters/` — NEVER run UPDATE/INSERT/DELETE directly against the database without having a migration file first.
+
+## Tillers Farm
+
+Full implementation of the Tillers farm system for Valley of Four Winds (zone 1023).
+
+### Architecture
+
+- **Scene Builder pattern**: Farm reconstructed from state at login/relog/teleport — no world mutation per player
+- **Two-phase isolation model**:
+  - Phase 1 (PUBLIC_FARM_MASK = 128): Static farm objects visible to pre-quest players
+  - Phase 2 (phaseMask = `(guid << 8) | 1`): Private dynamic farm, fully isolated per player
+- **Isolation via `_privateObjectOwner`**: All spawned objects (Yoon, soil, companions) have owner set — prevents cross-player visibility
+- **Content stored in `PlayerFarmState` struct**: `farmState` (obstacle bitmask), `plotsUnlocked`, `companions` (bitmask), `lastGrowthTick`
+
+### Key Files
+
+- `src/server/scripts/Pandaria/TillersFarmMgr.h` — Header with companion constants, creature entries, `PlayerFarmState` struct, class interface
+- `src/server/scripts/Pandaria/TillersFarmMgr.cpp` — Scene builder implementation, `SpawnPlayerFarm()`, companion spawning logic
+- `src/server/scripts/Pandaria/TillersZoneHooks.cpp` — Zone enter hook, Best Friend detection, Lost Dog quest hook
+- `src/server/scripts/Pandaria/TillersSoilScript.cpp` — Soil GameObject interaction script
+- `src/server/scripts/Pandaria/TillersWorkstation.cpp` — Workstation interaction handlers
+- `src/server/scripts/Commands/cs_tillers.cpp` — GM commands (`.tillers grow`, `.tillers reset`)
+
+### Companion System
+
+- **10 companions total**: 9 Best Friends (Exalted reputation unlock) + 1 Lost Dog (quest 30526)
+- **Bitmask storage**: `PlayerFarmState.bestFriendUnlocks` (uint8) — 16 bits available
+- **Best Friend unlock constants**:
+  - `BEST_FRIEND_SHAGGY` (1<<0) — Farmer Fung Best Friend — Yak (85814)
+  - `BEST_FRIEND_FIFI` (1<<1) — Haohan Mudclaw Best Friend — Mushan (85791)
+  - `BEST_FRIEND_CHICKENS` (1<<2) — Old Hillpaw Best Friend — Chickens (85820)
+  - `BEST_FRIEND_SHEEP` (1<<3) — Chee Chee Best Friend — Sheep (85808)
+  - `BEST_FRIEND_LUNA` (1<<4) — Ella Best Friend — Cat (85818)
+  - `BEST_FRIEND_PIGGY` (1<<5) — Fish Fellreed Best Friend — Pigs (85802)
+  - `BEST_FRIEND_ORANGE_TREE` (1<<6) — Sho Best Friend — Orange tree (237243)
+  - `BEST_FRIEND_FURNITURE` (1<<7) — Tina Mudclaw Best Friend — Furniture (237244)
+  - `BEST_FRIEND_MAILBOX` (1<<8) — Gina Mudclaw Best Friend — Mailbox (237242)
+  - `BEST_FRIEND_LOST_DOG` (1<<9) — Lost Dog quest (30526) — Dog (85826)
+- **Best Friend detection**: `IsBestFriend()` checks Tillers reputation rank (faction 1934) >= REPUTATION_EXALTED
+- **Lost Dog**: Quest 30526 completion via `IsQuestRewarded(30526)`
+- **Auto-unlock on zone enter**: `UpdateCompanionsOnZoneEnter()` called when player enters VFW
+
+### Database Schema
+
+- **`player_farm_state` table** (characters database):
+  - `guid` — player GUID
+  - `farm_phase` — FarmState bitmask (14=full, 12=weeds cleared, 8=wagon cleared, 0=all cleared)
+  - `plots_unlocked` — number of unlocked plots (4, 8, 12, or 16)
+  - `best_friend_unlocks` — SMALLINT UNSIGNED bitmask of unlocked best friends
+  - `last_growth_tick` — timestamp for growth scheduling
+- **`player_farm_plots` table** (characters database):
+  - `guid`, `plot_id`, `state`, `seed_entry`, `needs_watering`, `has_pests`, `maturity_timestamp`
+- **SQL migrations**: Located in `sql/updates/world/` and `sql/updates/characters/`
+- **Latest migration**: `2026_06_03_08_tillers_best_friend_unlocks_rename.sql` — renames `companions` → `best_friend_unlocks`, ensures default rows
+
+### Farm State Progression
+
+- **FARM_STATE_FULL (14/0b1110)**: All obstacles — 4 plots unlocked
+- **FARM_STATE_WEEDS_CLEARED (12/0b1100)**: Wagon + boulder — 8 plots unlocked
+- **FARM_STATE_WAGON_CLEARED (8/0b1000)**: Boulder only — 12 plots unlocked
+- **FARM_STATE_ALL_CLEARED (0/0b0000)**: No obstacles — 16 plots unlocked
+
+### Quest Gating
+
+- **Quest 30252** (entry quest): Required to spawn personal farm
+- **Quest 30256** (Learn and Grow IV): Unlocks soil GameObjects and crop planting
+- **Quest 30257** (dark soil): Additional quest chain progression
+- **Quest 30526** (Lost Dog): Unlocks companion
+
+### Implementation Status
+
+**Completed**:
+- Phase mask formula: `(guid << 8) | 1` (bit 0 keeps normal world visible)
+- `_privateObjectOwner` mechanism on all spawned objects
+- `PlayerFarmState` struct with `bestFriendUnlocks` bitmask
+- Best Friend unlock constants and creature/GO entries
+- Best Friend unlock spawning/removal methods
+- Best Friend reputation check logic
+- Lost Dog quest hook
+- `UpdateBestFriendUnlockState()` called in `SpawnPlayerFarm()` after state load
+- SQL migration for `best_friend_unlocks` column rename
+- Full persistence: `LoadPlayerState()` loads `best_friend_unlocks`, `SavePlayerFarm()` saves via REPLACE INTO
+- New player state row creation via `REPLACE INTO player_farm_state`
+
+**Remaining work**:
+- Implement best friend unlock spawning in `SpawnPlayerFarm()` scene builder
+- Test best friend unlock flow on zone enter
+- Verify creature/GO entries against database

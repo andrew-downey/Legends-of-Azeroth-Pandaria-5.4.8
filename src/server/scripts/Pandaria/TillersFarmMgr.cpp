@@ -48,7 +48,7 @@ bool TillersFarmMgr::LoadPlayerState(Player* player)
     uint32 guidLow = player->GetGUID().GetCounter();
 
     QueryResult result = CharacterDatabase.PQuery(
-        "SELECT farm_phase, plots_unlocked, last_growth_tick FROM player_farm_state WHERE guid = %u",
+        "SELECT farm_phase, plots_unlocked, last_growth_tick, best_friend_unlocks FROM player_farm_state WHERE guid = %u",
         guidLow);
 
     if (result)
@@ -57,6 +57,7 @@ bool TillersFarmMgr::LoadPlayerState(Player* player)
         uint8 phase   = fields[0].GetUInt8();
         uint8 plots   = fields[1].GetUInt8();
         time_t tick   = static_cast<time_t>(fields[2].GetUInt64());
+        uint16 bestFriendUnlocks = fields[3].GetUInt16();
 
         // Validate loaded state
         if (phase != FARM_STATE_FULL && phase != FARM_STATE_WEEDS_CLEARED && phase != FARM_STATE_WAGON_CLEARED && phase != FARM_STATE_ALL_CLEARED)
@@ -84,6 +85,7 @@ bool TillersFarmMgr::LoadPlayerState(Player* player)
         state.farmState     = phase;
         state.plotsUnlocked = plots;
         state.lastGrowthTick = tick;
+        state.bestFriendUnlocks = bestFriendUnlocks;
 
         _playerStates[guidLow] = state;
 
@@ -336,8 +338,8 @@ void TillersFarmMgr::SpawnPlayerFarm(Player* player)
     {
         uint8 bucket = static_cast<uint8>(guidLow % TILLERS_FARM_MGR_MUTEX_BUCKETS);
         std::lock_guard<std::mutex> lock(_mutexes[bucket]);
-        auto it = _playerPlots.find(guidLow);
-        if (it != _playerPlots.end() && !it->second.empty())
+        auto it = _playerSpawnedCreatures.find(guidLow);
+        if (it != _playerSpawnedCreatures.end())
         {
             // Upgrade path: if Learn and Grow IV (30256) was just completed, create soil GOs
             if (player->IsQuestRewarded(30256))
@@ -363,6 +365,7 @@ void TillersFarmMgr::SpawnPlayerFarm(Player* player)
         LoadPlotPositions();
         LoadYoonPosition();
         LoadObstaclePositions();
+        LoadBestFriendUnlockPositions();
         sInitDataLoaded = true;
     }
 
@@ -388,6 +391,10 @@ void TillersFarmMgr::SpawnPlayerFarm(Player* player)
     }
 
     PlayerFarmState& state = _playerStates[guidLow];
+
+    // Detect and save any newly unlocked best friends (rep gained outside zone)
+    UpdateBestFriendUnlockState(player);
+
     uint8 plotsCount = GetPlotsUnlockedForFarmState(state.farmState);
 
     // Initialize any missing plots for the current phase
@@ -418,6 +425,7 @@ void TillersFarmMgr::SpawnPlayerFarm(Player* player)
     RemoveSoilGos(player);
     RemoveSpawnedCreatures(player);
     RemoveObstacles(player);
+    RemoveBestFriendUnlocks(player);
 
     // Build farm from state: personal Yoon, obstacles matching current farmState, soil plots
     SpawnYoon(player, phaseMask);
@@ -475,6 +483,7 @@ void TillersFarmMgr::DespawnPlayerFarm(Player* player)
     RemoveSoilGos(player);
     RemoveSpawnedCreatures(player);
     RemoveObstacles(player);
+    RemoveBestFriendUnlocks(player);
 
     // Clear custom phase — player returns to zone phase definitions
     player->GetPhaseMgr().SetCustomPhase(0);
@@ -523,13 +532,14 @@ void TillersFarmMgr::SavePlayerFarm(Player* player)
         trans->Append(stmt);
     }
 
-    // Save player farm state (phase info)
+    // Save player farm state (phase info) — REPLACE handles both insert and update
     {
         CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_PLAYER_FARM_STATE);
         stmt->setUInt8(0, state.farmState);
         stmt->setUInt8(1, state.plotsUnlocked);
         stmt->setUInt64(2, static_cast<uint64>(state.lastGrowthTick));
-        stmt->setUInt32(3, guidLow);
+        stmt->setUInt16(3, state.bestFriendUnlocks);
+        stmt->setUInt32(4, guidLow);
         trans->Append(stmt);
     }
 
@@ -1002,3 +1012,200 @@ void TillersFarmMgr::LoadObstaclePositions()
 }
 
 
+
+void TillersFarmMgr::LoadBestFriendUnlockPositions()
+{
+    _bestFriendUnlockPositions.clear();
+
+    static uint32 const bestFriendUnlockEntries[] = {
+        SHAGGY_YAK_ENTRY, MISS_FIFI_MUSHAN_ENTRY, HILLPAW_CHICKENS_ENTRY,
+        FARM_SHEEP_ENTRY, LUNA_CAT_ENTRY, PIGGY_PIG_ENTRY,
+        ORANGE_TREE_ENTRY, FURNITURE_ENTRY, MAILBOX_ENTRY,
+        LOST_DOG_ENTRY
+    };
+
+    for (uint32 entry : bestFriendUnlockEntries)
+    {
+        QueryResult result = WorldDatabase.PQuery(
+            "SELECT `position_x`, `position_y`, `position_z`, `orientation` FROM `creature` "
+            "WHERE `map` = 870 AND `id` = %u AND `position_z` BETWEEN 160 AND 170 "
+            "ORDER BY `position_z` ASC LIMIT 1",
+            entry);
+
+        if (!result)
+        {
+            TC_LOG_WARN("scripts", "TillersFarmMgr: No best friend unlock position found for entry %u, trying gameobject table", entry);
+            result = WorldDatabase.PQuery(
+                "SELECT `position_x`, `position_y`, `position_z`, `orientation` FROM `gameobject` "
+                "WHERE `map` = 870 AND `id` = %u "
+                "ORDER BY `guid` LIMIT 1",
+                entry);
+        }
+
+        if (result)
+        {
+            Field* fields = result->Fetch();
+            BestFriendUnlockPosition pos;
+            pos.entry = entry;
+            pos.posX = fields[0].GetFloat();
+            pos.posY = fields[1].GetFloat();
+            pos.posZ = fields[2].GetFloat();
+            pos.orientation = fields[3].GetFloat();
+            _bestFriendUnlockPositions.push_back(pos);
+        }
+        else
+        {
+            TC_LOG_WARN("scripts", "TillersFarmMgr: No position found for best friend unlock entry %u (creature or gameobject)", entry);
+            BestFriendUnlockPosition pos;
+            pos.entry = entry;
+            pos.posX = -175.0f;
+            pos.posY = 640.0f;
+            pos.posZ = 165.5f;
+            pos.orientation = 0.0f;
+            _bestFriendUnlockPositions.push_back(pos);
+        }
+    }
+
+    TC_LOG_INFO("scripts", "TillersFarmMgr: Loaded %zu best friend unlock positions", _bestFriendUnlockPositions.size());
+}
+
+bool TillersFarmMgr::GetBestFriendUnlockPosition(uint32 entry, BestFriendUnlockPosition& out) const
+{
+    for (BestFriendUnlockPosition const& pos : _bestFriendUnlockPositions)
+    {
+        if (pos.entry == entry)
+        {
+            out = pos;
+            return true;
+        }
+    }
+    return false;
+}
+
+void TillersFarmMgr::SpawnBestFriendUnlock(Player* player, uint32 entry, uint32 phaseMask, float posX, float posY, float posZ, float orientation)
+{
+    if (!player || !player->IsInWorld())
+        return;
+
+    Creature* unlock = player->SummonCreature(entry, Position(posX, posY, posZ, orientation), TEMPSUMMON_MANUAL_DESPAWN, 0, 0, player->GetGUID());
+    if (unlock)
+    {
+        unlock->SetPhaseMask(phaseMask, true);
+        unlock->SetPrivateObjectOwner(player->GetGUID());
+        _playerBestFriendUnlocks[player->GetGUID().GetCounter()].push_back(unlock->GetGUID());
+        TC_LOG_DEBUG("scripts", "TillersFarmMgr: Spawned best friend unlock %u for player %u", entry, player->GetGUID().GetCounter());
+    }
+}
+
+void TillersFarmMgr::RemoveBestFriendUnlocks(Player* player)
+{
+    if (!player || !player->IsInWorld())
+        return;
+
+    uint32 guidLow = player->GetGUID().GetCounter();
+    auto it = _playerBestFriendUnlocks.find(guidLow);
+    if (it == _playerBestFriendUnlocks.end())
+        return;
+
+    Map* map = player->GetMap();
+    for (ObjectGuid const& guid : it->second)
+    {
+        Creature* c = map->GetCreature(guid);
+        if (c)
+            c->DespawnOrUnsummon();
+    }
+
+    TC_LOG_DEBUG("scripts", "TillersFarmMgr: Removed %zu best friend unlocks for player %u", it->second.size(), guidLow);
+    _playerBestFriendUnlocks.erase(it);
+}
+
+bool TillersFarmMgr::IsBestFriend(Player* player) const
+{
+    if (!player)
+        return false;
+
+    int32 tillersRep = player->GetReputationRank(1934);
+    return tillersRep >= REP_EXALTED;
+}
+
+void TillersFarmMgr::UpdateBestFriendUnlockState(Player* player)
+{
+    if (!player || !player->IsInWorld())
+        return;
+
+    uint32 guidLow = player->GetGUID().GetCounter();
+    uint8 bucket = static_cast<uint8>(guidLow % TILLERS_FARM_MGR_MUTEX_BUCKETS);
+    std::lock_guard<std::mutex> lock(_mutexes[bucket]);
+
+    PlayerFarmState& state = _playerStates[guidLow];
+    bool changed = false;
+
+    if ((state.bestFriendUnlocks & BEST_FRIEND_SHAGGY) == 0 && IsBestFriend(player))
+    {
+        state.bestFriendUnlocks |= BEST_FRIEND_SHAGGY;
+        changed = true;
+        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Shaggy the Yak (Best Friend)", guidLow);
+    }
+    if ((state.bestFriendUnlocks & BEST_FRIEND_FIFI) == 0 && IsBestFriend(player))
+    {
+        state.bestFriendUnlocks |= BEST_FRIEND_FIFI;
+        changed = true;
+        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Miss Fifi (Best Friend)", guidLow);
+    }
+    if ((state.bestFriendUnlocks & BEST_FRIEND_CHICKENS) == 0 && IsBestFriend(player))
+    {
+        state.bestFriendUnlocks |= BEST_FRIEND_CHICKENS;
+        changed = true;
+        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Hillpaw Chickens (Best Friend)", guidLow);
+    }
+    if ((state.bestFriendUnlocks & BEST_FRIEND_SHEEP) == 0 && IsBestFriend(player))
+    {
+        state.bestFriendUnlocks |= BEST_FRIEND_SHEEP;
+        changed = true;
+        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Sheep (Best Friend)", guidLow);
+    }
+    if ((state.bestFriendUnlocks & BEST_FRIEND_LUNA) == 0 && IsBestFriend(player))
+    {
+        state.bestFriendUnlocks |= BEST_FRIEND_LUNA;
+        changed = true;
+        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Luna the Cat (Best Friend)", guidLow);
+    }
+    if ((state.bestFriendUnlocks & BEST_FRIEND_PIGGY) == 0 && IsBestFriend(player))
+    {
+        state.bestFriendUnlocks |= BEST_FRIEND_PIGGY;
+        changed = true;
+        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Pigs (Best Friend)", guidLow);
+    }
+    if ((state.bestFriendUnlocks & BEST_FRIEND_ORANGE_TREE) == 0 && IsBestFriend(player))
+    {
+        state.bestFriendUnlocks |= BEST_FRIEND_ORANGE_TREE;
+        changed = true;
+        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Orange Tree (Best Friend)", guidLow);
+    }
+    if ((state.bestFriendUnlocks & BEST_FRIEND_FURNITURE) == 0 && IsBestFriend(player))
+    {
+        state.bestFriendUnlocks |= BEST_FRIEND_FURNITURE;
+        changed = true;
+        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Furniture (Best Friend)", guidLow);
+    }
+    if ((state.bestFriendUnlocks & BEST_FRIEND_MAILBOX) == 0 && IsBestFriend(player))
+    {
+        state.bestFriendUnlocks |= BEST_FRIEND_MAILBOX;
+        changed = true;
+        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Mailbox (Best Friend)", guidLow);
+    }
+
+    if ((state.bestFriendUnlocks & BEST_FRIEND_LOST_DOG) == 0 && player->IsQuestRewarded(30526))
+    {
+        state.bestFriendUnlocks |= BEST_FRIEND_LOST_DOG;
+        changed = true;
+        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Lost Dog (quest 30526)", guidLow);
+    }
+
+    if (changed)
+    {
+        CharacterDatabase.PExecute(
+            "UPDATE player_farm_state SET best_friend_unlocks = %u WHERE guid = %u",
+            state.bestFriendUnlocks, guidLow);
+    }
+}

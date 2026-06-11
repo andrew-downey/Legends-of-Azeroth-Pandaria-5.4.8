@@ -1,0 +1,49 @@
+Wild Battle Pet Migration Progress
+====================================
+Created: 2026-06-10
+
+COMPLETED MIGRATIONS
+--------------------
+2026_06_09_01_feralas_wild_pets.sql   — Feralas (zone 357): 3 type-8 + 2 type-14 (NFD, Yeti)
+2026_06_10_01_kalimdor_wild_pets.sql  — Kalimdor batch: Thunder Bluff, Ahn'Qiraj, Darkmoon Island, Molten Front
+2026_06_10_02_eastern_kingdoms_wild_pets.sql — EK batch: 30 pools (24 type-8, 6 type-14):
+  - Arathi Highlands (45): 7 pools — 4 type-8 (Grasslands Cottontail, Prairie Dog, Rat, Small Frog), 3 type-14 (Tiny Twister, Hare, Cat)
+  - Northern Stranglethorn (33): 10 pools — 9 type-8 (Beetle, Crimson Moth, Forest Spiderling, Lizard Hatchling, Long-tailed Mole, Parrot, Roach, Strand Crab, Tree Python), 1 type-14 (Polly)
+  - Deadwind Pass (41): 2 pools — 0 type-8, 2 type-14 (Restless Shadeling in Master's Cellar, Arcane Eye near Karazhan)
+  - The Cape of Stranglethorn (5287): 11 pools — 10 type-8 (Beetle, Crimson Moth, Forest Spiderling, Lizard Hatchling, Long-tailed Mole, Parrot, Rat, Roach, Strand Crab, Tree Python, Wharf Rat), 1 type-14 (Baby Ape on Jaguero Isle)
+
+DEFERRED ZONES (need research)
+-------------------------------
+Eastern Kingdoms:
+  - Northshire Valley (5333) — Human starter
+  - Coldridge Valley (5334) — Dwarf/Gnome starter
+  - Deathknell (5335) — Undead starter
+  - New Tinkertown (5600) — Goblin starter
+  - TBC EK: Eversong Woods (3430), Ghostlands (3525), Silvermoon City (3487), Isle of Quel'Danas (4080)
+  - Cata EK: Gilneas (4769), Gilneas City (4755), Twilight Highlands (4937), Vashj'ir (4820)
+Kalimdor continent (starters):
+  - Shadowglen (6450) — NE starter, need retail pet list + check parent zone Teldrassil (141)
+  - Valley of Trials (6451) — Orc/Troll starter, need retail pet list + check parent Durotar (14)
+  - Camp Narache (6452) — Tauren starter, need retail pet list + check parent Mulgore (215)
+  - Echo Isles (6453) — Troll starter, need retail pet list + check parent Durotar (14)
+  - The Wandering Isle (5736) — MoP starter, need retail pet list
+
+UPCOMING BATCHES (remaining ~50 zones across all expansions)
+----------------------------------------------------------
+1. ✅ Eastern Kingdoms classic — Arathi Highlands, Deadwind Pass, Northern Stranglethorn, Cape of Stranglethorn
+2. Starter zones (EK + Kalimdor + Wandering Isle) — research retail pet lists for each
+3. EK TBC — Eversong Woods, Ghostlands, Silvermoon City, Isle of Quel'Danas
+4. EK Cata — Gilneas, Gilneas City, Twilight Highlands, Vashj'ir
+5. Outland (TBC)
+6. Northrend (Wrath)
+7. Kalimdor/Cata (Mount Hyjal, Deepholm, Uldum, etc.)
+8. Mists of Pandaria
+
+KEY DISCOVERIES
+---------------
+- EK zones initially appeared to have 0 type-8 critters (wrong JOIN); they actually have hundreds of critter spawns
+- Most pets in Arathi, NST, Cape use type-8 with matching critter names
+- Deadwind Pass has NO type-8 critters whatsoever — type-14 only
+- BattlePetSpecies.db2 field mapping: field[0]=speciesId, field[1]=creatureId (type-14 NPC), field[8]=name description
+- Type-14 NPCs (entry >= 61080) are stored in creature_template with type=14
+- All 845 species records in BattlePetSpecies.db2 verified readable

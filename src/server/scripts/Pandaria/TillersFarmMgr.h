@@ -96,6 +96,7 @@ struct PlayerFarmState
 {
     uint8   farmState       = FARM_STATE_FULL;
     uint8   plotsUnlocked   = 4;        // number of unlocked patches
+    uint16  bestFriendUnlocks   = 0;    // bitmask of unlocked best friends
     time_t  lastGrowthTick  = 0;        // absolute timestamp for drift-free scheduling
 };
 
@@ -130,6 +131,16 @@ struct ObstacleSpawnData
     bool IsBoulder() const { return entry == 209572; }
 };
 
+// Best Friend unlock spawn data loaded from creature/GO table
+struct BestFriendUnlockPosition
+{
+    uint32 entry = 0;
+    float posX = 0.0f;
+    float posY = 0.0f;
+    float posZ = 0.0f;
+    float orientation = 0.0f;
+};
+
 // Yoon spawn data loaded from creature table
 struct YoonSpawnData
 {
@@ -142,6 +153,30 @@ struct YoonSpawnData
 
 // Creature entries used for farm visual elements
 static inline uint32 const PLOT_REFERENCE_CREATURE_ENTRY = 55626;   // Bunny — plot position reference
+
+// Best Friend unlock bitmask — each bit represents a Best Friend or quest reward
+#define BEST_FRIEND_SHAGGY          (1 << 0)  // Farmer Fung Best Friend — Yak
+#define BEST_FRIEND_FIFI            (1 << 1)  // Haohan Mudclaw Best Friend — Mushan
+#define BEST_FRIEND_CHICKENS        (1 << 2)  // Old Hillpaw Best Friend — Chickens
+#define BEST_FRIEND_SHEEP           (1 << 3)  // Chee Chee Best Friend — Sheep
+#define BEST_FRIEND_LUNA            (1 << 4)  // Ella Best Friend — Cat
+#define BEST_FRIEND_PIGGY           (1 << 5)  // Fish Fellreed Best Friend — Pigs
+#define BEST_FRIEND_ORANGE_TREE     (1 << 6)  // Sho Best Friend — Orange tree
+#define BEST_FRIEND_FURNITURE       (1 << 7)  // Tina Mudclaw Best Friend — Furniture
+#define BEST_FRIEND_MAILBOX         (1 << 8)  // Gina Mudclaw Best Friend — Mailbox
+#define BEST_FRIEND_LOST_DOG        (1 << 9)  // Lost Dog quest (30526) — Dog
+
+// Best Friend unlock creature/GO entries
+static inline uint32 const SHAGGY_YAK_ENTRY             = 85814;
+static inline uint32 const MISS_FIFI_MUSHAN_ENTRY       = 85791;
+static inline uint32 const HILLPAW_CHICKENS_ENTRY       = 85820;
+static inline uint32 const FARM_SHEEP_ENTRY             = 85808;
+static inline uint32 const LUNA_CAT_ENTRY               = 85818;
+static inline uint32 const PIGGY_PIG_ENTRY              = 85802;
+static inline uint32 const ORANGE_TREE_ENTRY            = 237243;
+static inline uint32 const FURNITURE_ENTRY              = 237244;
+static inline uint32 const MAILBOX_ENTRY                = 237242;
+static inline uint32 const LOST_DOG_ENTRY               = 85826;
 
 #define TILLERS_FARM_MGR_MUTEX_BUCKETS 64
 
@@ -318,6 +353,43 @@ private:
     void RemoveObstacles(Player* player);
 
     /**
+     * Spawn a best friend unlock (creature or GO) based on farm state.
+     */
+    void SpawnBestFriendUnlock(Player* player, uint32 entry, uint32 phaseMask, float posX, float posY, float posZ, float orientation);
+
+    /**
+     * Remove all dynamically spawned best friend unlock creatures/GOs for a player.
+     */
+    void RemoveBestFriendUnlocks(Player* player);
+
+    /**
+     * Load best friend unlock positions from creature/GO table.
+     * Called once at startup, cached in _bestFriendUnlockPositions.
+     */
+    void LoadBestFriendUnlockPositions();
+
+    /**
+     * Get cached best friend unlock positions.
+     */
+    std::vector<BestFriendUnlockPosition> const& GetBestFriendUnlockPositions() const { return _bestFriendUnlockPositions; }
+
+    /**
+     * Get best friend unlock position by entry. Returns true if found.
+     */
+    bool GetBestFriendUnlockPosition(uint32 entry, BestFriendUnlockPosition& out) const;
+
+    /**
+     * Check if a Tillers friend has Best Friend status (Exalted reputation).
+     */
+    bool IsBestFriend(Player* player) const;
+
+    /**
+     * Update best friend unlock state based on current Tillers reputations.
+     * Called after state load to detect newly unlocked best friends.
+     */
+    void UpdateBestFriendUnlockState(Player* player);
+
+    /**
      * Load ground-level Yoon spawn position from creature table.
      * Called once at startup, cached in _yoonSpawnData.
      */
@@ -344,6 +416,9 @@ private:
     // Obstacle GO tracking: guidLow -> list of spawned obstacle GO GUIDs for removal
     std::unordered_map<uint32, std::vector<ObjectGuid>> _playerObstacleGOs;
 
+    // Best friend unlock tracking: guidLow -> list of spawned best friend unlock GUIDs for removal
+    std::unordered_map<uint32, std::vector<ObjectGuid>> _playerBestFriendUnlocks;
+
     // Cached plot positions loaded from creature table (map 870, entry 55626)
     std::vector<PlotPosition> _plotPositions;
 
@@ -352,6 +427,9 @@ private:
 
     // Cached obstacle positions loaded from gameobject table
     std::vector<ObstacleSpawnData> _obstaclePositions;
+
+    // Cached best friend unlock positions loaded from creature/GO table
+    std::vector<BestFriendUnlockPosition> _bestFriendUnlockPositions;
 
     // 64-bucket striped mutex for thread-safe per-player access
     std::mutex _mutexes[TILLERS_FARM_MGR_MUTEX_BUCKETS];

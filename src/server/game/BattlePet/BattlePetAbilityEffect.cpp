@@ -260,10 +260,13 @@ bool BattlePetAbilityEffect::Execute()
     {
         m_target = target;
 
+        PetBattleEffectFlags savedFlags = m_flags;
         if (!m_target->IsTargetable())
             m_flags |= PET_BATTLE_EFFECT_FLAG_MISS;
 
         (this->*Handlers[m_effectEntry->EffectProperty].Handle)();
+
+        m_flags = savedFlags;
     }
 
     return true;
@@ -555,13 +558,39 @@ void BattlePetAbilityEffect::HandleHealPctDealt()
     Heal(m_target, CalculatePct(m_target->States[BATTLE_PET_STATE_LAST_HIT_DEALT], m_effectEntry->Properties[0]));
 };
 
+bool BattlePetAbilityEffect::IsTriggerDelayedActivation() const
+{
+    if (!m_effectEntry)
+        return false;
+
+    for (uint32 i = 0; i < sBattlePetAbilityTurnStore.GetNumRows(); i++)
+    {
+        BattlePetAbilityTurnEntry const* turn = sBattlePetAbilityTurnStore.LookupEntry(i);
+        if (turn && turn->AbilityId == m_effectEntry->TriggerAbility
+            && turn->HasProcType == 1
+            && turn->ProcType == PET_BATTLE_ABILITY_PROC_ON_AURA_REMOVED)
+            return true;
+    }
+    return false;
+}
+
 // Effect 50: ChainFailure, Accuracy, Duration, MaxAllowed, CasterState, TargetState
 void BattlePetAbilityEffect::HandleNegativeAura()
 {
     // TODO: handle ChainFailure, CasterState, TargetState
 
-    CalculateHit(m_effectEntry->Properties[1]);
-    m_petBattle->AddAura(m_caster, m_target, m_effectEntry->TriggerAbility, m_effectEntry->Id, m_effectEntry->Properties[2], m_flags, 1);
+    // Always apply the aura regardless of hit/miss at cast time — the aura is a
+    // debuff visual/timer that must show on the target. For delayed-activation
+    // abilities (e.g. Elementium Bolt), the real effect (damage, stun, etc.)
+    // is triggered on aura expiry via PET_BATTLE_ABILITY_PROC_ON_AURA_REMOVED,
+    // and hit/avoidance is correctly re-evaluated at that point by Cast().
+    // Without this, Burrow/untargetable at cast time prevents the aura from
+    // being applied, and the delayed hit never fires.
+    if (!IsTriggerDelayedActivation())
+        CalculateHit(m_effectEntry->Properties[1]);
+    m_petBattle->AddAura(m_caster, m_target, m_effectEntry->TriggerAbility,
+        m_effectEntry->Id, m_effectEntry->Properties[2],
+        PET_BATTLE_EFFECT_FLAG_NONE, 1);
 }
 
 // Effect 54: ChainFailure, Accuracy, Duration, MaxAllowed
@@ -570,7 +599,8 @@ void BattlePetAbilityEffect::HandlePeriodicTrigger()
     if (m_effectEntry->Properties[0] && m_chainFailure)
         return;
 
-    CalculateHit(m_effectEntry->Properties[1]);
+    if (!IsTriggerDelayedActivation())
+        CalculateHit(m_effectEntry->Properties[1]);
     m_petBattle->AddAura(m_caster, m_target, m_effectEntry->TriggerAbility, m_effectEntry->Id, m_effectEntry->Properties[2], m_flags, 1);
 }
 
@@ -684,6 +714,5 @@ void BattlePetAbilityEffect::HandlePowerlessAura()
 // Effect 80: TurnOffset, Accuracy, Duration, MaxAllowed
 void BattlePetAbilityEffect::HandleWeatherAura()
 {
-    CalculateHit(m_effectEntry->Properties[1]);
     m_petBattle->AddAura(m_caster, m_target, m_effectEntry->TriggerAbility, m_effectEntry->Id, m_effectEntry->Properties[2], m_flags, m_effectEntry->Properties[3]);
 }

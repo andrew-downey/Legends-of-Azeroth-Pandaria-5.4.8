@@ -181,6 +181,48 @@ All changes in `sql/updates/world/2026_05_22_00_battle_pet_trainer_spawns.sql`.
 | 16 | `BattlePetAbilityEffect.cpp` | `HandlePeriodicTrigger` (Effect 54): changed `maxAllowed` from DBC `Properties[3]` to hardcoded `1` — prevents periodic DoTs (like poison) from stacking |
 | 17 | `BattlePetAbilityEffect.cpp` | `HandleNegativeAura` (Effect 50): changed `maxAllowed` from DBC `Properties[3]` to hardcoded `1` — prevents debuff auras from stacking |
 
+## Wild Pet Spawning System
+
+### Two Approaches
+
+**Approach A — Type 8 critter replacement (Old World):**
+Pool `entry` references a type 8 critter (e.g., `721` Rabbit) that already spawns in the zone. The replacement system picks it up in `OnAddToZone()`, adds it to `CreaturesReadyForReplace`, then `SpawnCreature()` creates a new creature with the battle pet's `NpcId` from `BattlePetSpecies.db2` and gives it `UNIT_NPC_FLAG_WILDPET_CAPTURABLE`.
+
+**Approach B — Type 14 direct spawn (MoP, Pandaria):**
+The battle pet's NpcId is placed directly in the `creature` table as a type 14 spawn (no special flags in DB — `npcflag=0`). Pool `entry` references the NpcId itself. The replacement system re-creates the same creature with the `WILDPET_CAPTURABLE` flag at runtime. Used for all MoP wild pets (Crested Owl, Bandicoon, etc.) — 52 pool entries with matching creature spawns.
+
+### Hybrid Zones
+
+A zone can mix both approaches. Example: Feralas uses type 8 replacement for Rabbit/Squirrel/Snake (common pets with existing critters) and type 14 direct spawns for Nether Faerie Dragon / Stunted Yeti (unique pets with no matching critter).
+
+### Key Code Paths
+
+| Path | File | Purpose |
+|------|------|---------|
+| `BattlePetSpawnMgr::Initialise()` | `BattlePetSpawnMgr.cpp:27` | Loads `battle_pet_wild_pool` into `m_battlePetMapPools` |
+| `BattlePetSpawnMgr::OnAddToMap()` | `BattlePetSpawnMgr.cpp:115` | Called when creature added to map → delegates to zone mgr |
+| `BattlePetSpawnZoneMgr::OnAddToZone()` | `BattlePetSpawnMgr.cpp:285` | Matches creature entry to pool template, adds to replace queue |
+| `BattlePetSpawnZoneMgr::PopulateZone()` | `BattlePetSpawnMgr.cpp:256` | Every 2s, replaces queued critters with battle pets |
+| `BattlePetSpawnZoneMgr::SpawnCreature()` | `BattlePetSpawnMgr.cpp:318` | Creates battle pet with `WILDPET_CAPTURABLE`, despawns original |
+| `BattlePetSpawnMgr::GetWildBattlePet()` | `BattlePetSpawnMgr.cpp:203` | Looks up battle pet data for a creature GUID |
+
+### Duplicate Check
+
+At `BattlePetSpawnMgr.cpp:83-91`: Two species in the same zone cannot share the same `entry` (base critter/NpcId). This prevents one critter from being replaced by two different battle pets.
+
+### Creature Table Pattern for Type 14 Spawns
+
+```sql
+INSERT INTO creature (id, map, zoneId, areaId, spawnMask, phaseMask, position_x, position_y, position_z, orientation, spawntimesecs, wander_distance, MovementType, VerifiedBuild) VALUES
+(<npcId>, <map>, <zoneId>, <areaId>, 1, 1, <x>, <y>, <z>, <orient>, 300, 5, 1, 0);
+```
+
+- `spawntimesecs=300` (5 min respawn — standard across all wild pet spawns)
+- `wander_distance=5` (they roam a bit from their anchor point)
+- `MovementType=1` (random movement)
+- Orientation, X/Y/Z copied from existing nearby creature spawns is sufficient (critters wander anyway)
+- No special NPC flags needed — the replacement system sets them
+
 ## Current State
 
 - ✅ Database provisioning: all 51 pet battle tamers have spawns, quest links, and pet teams

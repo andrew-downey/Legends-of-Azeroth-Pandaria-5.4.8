@@ -1,7 +1,7 @@
 -- Expand weeds across the first 4 unlockable Tillers farm plots (2x2 grid)
 -- Adds 8 more copies of weed 210445 (display 358) spread naturally across the plot area
 
-INSERT INTO gameobject (guid, id, map, zoneId, areaId, spawnMask, phaseMask, phaseId, phaseGroup, position_x, position_y, position_z, orientation, rotation0, rotation1, rotation2, rotation3, spawntimesecs, animprogress, state, ScriptName, VerifiedBuild) VALUES
+INSERT IGNORE INTO gameobject (guid, id, map, zoneId, areaId, spawnMask, phaseMask, phaseId, phaseGroup, position_x, position_y, position_z, orientation, rotation0, rotation1, rotation2, rotation3, spawntimesecs, animprogress, state, ScriptName, VerifiedBuild) VALUES
 (4000077, 210445, 870, 5805, 6039, 1, 128, 0, 0, -174.32, 642.17, 165.409, 0, 0, 0, 0, 1, 120, 255, 1, '', 0),
 (4000078, 210445, 870, 5805, 6039, 1, 128, 0, 0, -161.45, 641.83, 165.409, 0, 0, 0, 0, 1, 120, 255, 1, '', 0),
 (4000079, 210445, 870, 5805, 6039, 1, 128, 0, 0, -172.68, 655.41, 165.409, 0, 0, 0, 0, 1, 120, 255, 1, '', 0),

@@ -1994,6 +1994,14 @@ Rate.XP.Quest   = 1
 Rate.XP.Explore = 1
 
 #
+#    Rate.BattlePet.XP
+#        Description: Experience rate for battle pet (pet battle) XP gains.
+#        Default:     1
+#
+
+Rate.BattlePet.XP = 1
+
+#
 #    Rate.RepairCost
 #        Description: Repair cost rate.
 #        Default:     1

@@ -1657,6 +1657,7 @@ void World::LoadRates(bool loading)
         { RATE_DURABILITY_LOSS_ABSORB,                  "DurabilityLossChance.Absorb",                  0.5f,   true  },
         { RATE_DURABILITY_LOSS_PARRY,                   "DurabilityLossChance.Parry",                   0.05f,  true  },
         { RATE_DURABILITY_LOSS_BLOCK,                   "DurabilityLossChance.Block",                   0.05f,  true  },
+        { RATE_BATTLE_PET_XP,                           "Rate.BattlePet.XP",                            1.0f,   false },
     };
 
     if (loading)

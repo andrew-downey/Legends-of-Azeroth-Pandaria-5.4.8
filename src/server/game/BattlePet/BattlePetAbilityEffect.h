@@ -41,7 +41,7 @@ enum PetBattleAbilityTarget
     PET_BATTLE_ABILITY_TARGET_HEAD                      = 13
 };
 
-#define PET_BATTLE_TOTAL_ABILITY_EFFECTS 198
+#define PET_BATTLE_TOTAL_ABILITY_EFFECTS 256
 
 enum PetBattleEffectFlags : uint32;
 
@@ -89,6 +89,23 @@ public:
     void HandleDamageNonLethal();
     void HandlePowerlessAura();
     void HandleWeatherAura();
+
+    // New handlers
+    void HandleHealPct();
+    void HandleHealWithLastHit();
+    void HandleStateBonusDamage();
+    void HandleLowHpDamage();
+    void HandlePctHealthDamage();
+    void HandleExecuteDamage();
+    void HandleSacrifice();
+    void HandleHealSplit();
+    void HandleInterrupt();
+    void HandleKillActive();
+    void HandleCleanse();
+    void HandleExtraAttackIfSlower();
+    void HandleMultiStrike();
+    void HandleStun();
+    void HandleVengeance();
 
 private:
     bool IsTriggerDelayedActivation() const;

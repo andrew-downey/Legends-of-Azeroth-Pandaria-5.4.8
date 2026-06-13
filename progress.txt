@@ -11,6 +11,8 @@ COMPLETED MIGRATIONS
   - Northern Stranglethorn (33): 10 pools — 9 type-8 (Beetle, Crimson Moth, Forest Spiderling, Lizard Hatchling, Long-tailed Mole, Parrot, Roach, Strand Crab, Tree Python), 1 type-14 (Polly)
   - Deadwind Pass (41): 2 pools — 0 type-8, 2 type-14 (Restless Shadeling in Master's Cellar, Arcane Eye near Karazhan)
   - The Cape of Stranglethorn (5287): 11 pools — 10 type-8 (Beetle, Crimson Moth, Forest Spiderling, Lizard Hatchling, Long-tailed Mole, Parrot, Rat, Roach, Strand Crab, Tree Python, Wharf Rat), 1 type-14 (Baby Ape on Jaguero Isle)
+2026_06_12_00_deepholm_wild_pets.sql — Deepholm (zone 6400): 11 species — 10 type-8 (Crystal Beetle, Deepholm Cockroach, Crimson Shale Hatchling, Emerald Shale Hatchling, Amethyst Shale Hatchling, Topaz Shale Hatchling, Fungal Moth, Stowaway Rat, Twilight Beetle, Twilight Spider) + 1 type-14 (Crimson Geode in Crimson Expanse)
+2026_06_12_01_twilight_highlands_wild_pets.sql — Twilight Highlands (zone 4922): 2 missing species — 1 type-8 (Cockroach) + 1 type-14 (Twilight Fiendling near Twilight Bonebreaker NPCs)
 
 DEFERRED ZONES (need research)
 -------------------------------
@@ -33,10 +35,10 @@ UPCOMING BATCHES (remaining ~50 zones across all expansions)
 1. ✅ Eastern Kingdoms classic — Arathi Highlands, Deadwind Pass, Northern Stranglethorn, Cape of Stranglethorn
 2. Starter zones (EK + Kalimdor + Wandering Isle) — research retail pet lists for each
 3. EK TBC — Eversong Woods, Ghostlands, Silvermoon City, Isle of Quel'Danas
-4. EK Cata — Gilneas, Gilneas City, Twilight Highlands, Vashj'ir
+4. EK Cata — Gilneas, Gilneas City, Twilight Highlands✅, Vashj'ir
 5. Outland (TBC)
 6. Northrend (Wrath)
-7. Kalimdor/Cata (Mount Hyjal, Deepholm, Uldum, etc.)
+7. Kalimdor/Cata (Mount Hyjal, Deepholm✅, Uldum, etc.)
 8. Mists of Pandaria
 
 KEY DISCOVERIES
@@ -44,6 +46,11 @@ KEY DISCOVERIES
 - EK zones initially appeared to have 0 type-8 critters (wrong JOIN); they actually have hundreds of critter spawns
 - Most pets in Arathi, NST, Cape use type-8 with matching critter names
 - Deadwind Pass has NO type-8 critters whatsoever — type-14 only
-- BattlePetSpecies.db2 field mapping: field[0]=speciesId, field[1]=creatureId (type-14 NPC), field[8]=name description
+- BattlePetSpecies.db2 (WDB2 format, 845 records, 9 fields, 36 bytes/record):
+    field[0]=hash (not species ID), field[1]=flags, field[4]=minLevel (pet battle),
+    field[5]=description string, field[6]=zone/location string,
+    field[7]=species ID (primary key), field[8]=creature ID (type-14 NPC FK)
+  - String table starts at offset 20+records*record_size; strings are null-terminated
+  - Field[6] zone refs are often truncated due to shared string table (preceding string overlaps)
 - Type-14 NPCs (entry >= 61080) are stored in creature_template with type=14
 - All 845 species records in BattlePetSpecies.db2 verified readable

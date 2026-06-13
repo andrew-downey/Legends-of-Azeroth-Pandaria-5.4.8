@@ -180,6 +180,7 @@ All changes in `sql/updates/world/2026_05_22_00_battle_pet_trainer_spawns.sql`.
 | 15 | `PetBattle.cpp` | `AddAura()`: moved `m_effects.push_back(effect)` after `if (flags) return;` — fixes client-server desync where client received phantom aura-apply for missed/blocked attacks |
 | 16 | `BattlePetAbilityEffect.cpp` | `HandlePeriodicTrigger` (Effect 54): changed `maxAllowed` from DBC `Properties[3]` to hardcoded `1` — prevents periodic DoTs (like poison) from stacking |
 | 17 | `BattlePetAbilityEffect.cpp` | `HandleNegativeAura` (Effect 50): changed `maxAllowed` from DBC `Properties[3]` to hardcoded `1` — prevents debuff auras from stacking |
+| 18 | `PetBattle.cpp` | `StartBattle()`: added `PET_BATTLE_EFFECT_ACTIVE_PET` for initial active pets — fixes bench pets appearing in 3D cages on the battlefield |
 
 ## Wild Pet Spawning System
 
@@ -223,6 +224,198 @@ INSERT INTO creature (id, map, zoneId, areaId, spawnMask, phaseMask, position_x,
 - Orientation, X/Y/Z copied from existing nearby creature spawns is sufficient (critters wander anyway)
 - No special NPC flags needed — the replacement system sets them
 
+## Ability Effect System
+
+### Handler Table Architecture
+
+The handler table in `BattlePetAbilityEffect.cpp:29-236` is a fixed-size array indexed by `EffectProperty` (from `BattlePetAbilityEffect.db2`). Size: `PET_BATTLE_TOTAL_ABILITY_EFFECTS` (now 256, was 198).
+
+Each entry: `{ HandlerFunction, TargetType }`.
+
+**Effect flow per `Execute()` call:**
+1. Resolve target list from `TargetType` (CASTER, TARGET, ALL, HEAD, etc.)
+2. For each target: save flags, apply miss if untargetable, call handler, restore flags
+3. Effects are independent — flags do NOT carry across effects in the same ability
+
+**ChainFailure** (`m_chainFailure`): Controlled by `Properties[0]` on some effect types. If set, a miss/immune on a chainFailure effect skips subsequent effects. Set per `BattlePetAbilityEffect` object — not by the handler directly.
+
+### DBC Field Mapping
+
+`BattlePetAbilityEffectEntry` (12 uint32 fields from `BattlePetAbilityEffect.db2`):
+
+| Index | Field | Meaning |
+|-------|-------|---------|
+| 0 | Id | Primary key |
+| 1 | TurnId | FK → `BattlePetAbilityTurn.Id` |
+| 2 | TriggerAbility | FK → ability to trigger (often 0) |
+| 3 | Unk | **Critical**: should be ability for `BattlePetAbilityState` lookups, but code uses `TriggerAbility` instead |
+| 4 | EffectProperty | Effect type (handler table index) |
+| 5 | EffectPropertyBit | Bit position within the turn (execution order) |
+| 6-11 | Properties[6] | Effect-specific parameters (see below) |
+
+### Property Encoding Convention
+
+For almost all effect types, `Properties` follow positional semantics:
+
+| Index | Common Meaning | Notes |
+|-------|---------------|-------|
+| 0 | Base value (damage, heal, state ID, pct) | Primary parameter |
+| 1 | Accuracy/chance | Miss rolls: `CalculateHit(acc)` |
+| 2 | Duration / state ID / IsPeriodic flag | Dependent on effect type |
+| 3 | State ID / multiplier / MaxAllowed | Second state or count |
+| 4 | Effect-specific | |
+| 5 | `reportFailAsImmune` / chainFailure | In `HandlePowerlessAura` |
+
+### Handler Status (2026-06-11 Audit)
+
+Out of 78 unique effect types used in the DBC:
+
+| Status | Count | Details |
+|--------|-------|---------|
+| **Implemented** | 17 | Original handlers (Heal, Damage, PositiveAura, etc.) |
+| **Re-mapped** | 14 | Effects that reused existing handlers (22, 28, 52, 79, 85, 139, 145, 150, 165, 168, 169, 178, 179, 204) |
+| **New** | 15 | Handlers added in 2026-06-11 session |
+| **Unhandled** | ~32 | Remain as `HandleNull` — see deferred list below |
+| Total used | 78 | From `BattlePetAbilityEffect.db2` |
+
+**Implemented effects** (46 total, up from 17):
+
+| Effect | Handler | Abilities | Purpose |
+|--------|---------|-----------|---------|
+| 22 | NegativeAura | 2 | Target debuff |
+| 23 | Heal | many | Flat heal + power scaling |
+| 24 | Damage | many | Flat damage + family bonus |
+| 25 | Catch | 1 | Wild pet capture |
+| 26 | PositiveAura | many | Self-buff aura |
+| 27 | RampingDamage | 3 | Scaling damage per use |
+| 28 | PositiveAura | 1 | Self-buff aura |
+| 29 | StateBonusDamage | 17 | Extra damage if caster/target has state |
+| 31 | SetState | 3 | Set caster state to value |
+| 32 | HealPctDealt | 8 | Heal % of last damage dealt |
+| 33 | HealPct | 0 (unused) | Heal % of max health |
+| 44 | HealWithLastHit | 3 | Heal % of last damage dealt |
+| 50 | NegativeAura | many | Target debuff aura |
+| 52 | NegativeAura | 28 | Debuff aura (stun/sleep) |
+| 53 | HealPct | 7 | Heal % of max health |
+| 54 | PeriodicTrigger | many | Periodic DoT/HoT |
+| 59 | LowHpDamage | 3 | Bonus when caster low HP |
+| 62 | PctHealthDamage | 10 | % of target max HP |
+| 63 | PeriodicPositiveTrigger | many | Periodic HoT/buff |
+| 66 | ExecuteDamage | 3 | Bonus when target low HP |
+| 68 | Sacrifice | 6 | Kill caster, damage target |
+| 76 | DamageToggleAura | 2 | Toggle on/off damage |
+| 79 | Damage | 1 | Damage with accuracy |
+| 80 | WeatherAura | 7 | Weather effect (all pets) |
+| 85 | PositiveAura | 1 | Self-buff aura |
+| 96 | DamageHitState | 2 | Damage conditional on states |
+| 100 | HealSplit | 4 | Heal with power scaling |
+| 103 | ExtraAttackFirst | 4 | Extra hit if faster |
+| 104 | HealState | 7 | Heal conditional on states |
+| 131 | Interrupt | 7 | Turn lock + optional stun |
+| 135 | KillActive | 12 | Damage both active pets |
+| 136 | Cleanse | 18 | Remove harmful auras |
+| 139 | NegativeAura | 2 | Target debuff aura |
+| 145 | NegativeAura | 1 | Target debuff aura |
+| 149 | DamageNonLethal | 2 | Damage (min 1 HP remaining) |
+| 150 | PositiveAura | 1 | Self HoT |
+| 160 | ExtraAttackIfSlower | 1 | Extra hit if slower → **fixes Tail Sweep** |
+| 164 | MultiStrike | 19 | 1-3 hits with chance → **fixes Rend** |
+| 165 | NegativeAura | 2 | Target debuff aura |
+| 168 | NegativeAura | 1 | Target debuff aura |
+| 169 | WeatherAura | 1 | Team-wide weather |
+| 177 | Stun | 22 | Immunity gate only (see Stun Architecture) |
+| 178 | PowerlessAura | 17 | Stun/sleep with immunity check |
+| 179 | PositiveAura | 1 | Self-buff |
+| 197 | Vengeance | 1 | Reflect damage taken |
+| 204 | PositiveAura | 1 | Reflective Shield self-buff |
+
+### New Handler Implementations (2026-06-11)
+
+**`HandleHealPct`** (Effects 33, 53): `Heal(target, CalculatePct(target->GetMaxHealth(), Properties[0]))` — flat % of max health, no power scaling. Recovery heals 4% per round.
+
+**`HandleHealWithLastHit`** (Effect 44): `Heal(target, CalculatePct(caster->LastHitDealt, Properties[0]))` — used by Healing Flame (50% of last hit).
+
+**`HandleStateBonusDamage`** (Effect 29): `Damage = base[0]`. If `Properties[2]` > 0 and `caster->States[Properties[2]]` > 0, add bonus base. Else if `Properties[3]` > 0 and `target->States[Properties[3]]` > 0, add bonus base. Used by Counterstrike (state 28 = WAS_DAMAGED_THIS_ROUND), Ice Lance (state 52 = CHILLED), etc.
+
+**`HandleLowHpDamage`** (Effect 59): If `Properties[2]` > 0 and caster HP% < threshold, deals 2× damage. Comeback: no threshold (always 1×). Early Advantage: threshold 10%.
+
+**`HandlePctHealthDamage`** (Effect 62): `Damage = target MaxHP × Properties[0] / 100`. Not scaled by power. Used by Corpse Explosion (5%), Trample (10%), etc.
+
+**`HandleExecuteDamage`** (Effect 66): Like LowHpDamage but checks target HP%. Properties[2] = 100 for all current abilities (always active).
+
+**`HandleSacrifice`** (Effect 68): `SetHealth(caster, 0)` then `Damage(target, Properties[0])`. Kills caster, deals damage to target.
+
+**`HandleMultiStrike`** (Effect 164): Always deals 1 hit of `Properties[0]` damage, then rolls `Properties[1]`% chance for a 2nd hit, then rolls again for a 3rd. No accuracy check (the primary ability effect handles hit/miss). Used by Rend (50% chance), Triple Snap (66%), Slicing Wind (33%).
+
+**`HandleInterrupt`** (Effect 131): Always sets `BATTLE_PET_STATE_TURN_LOCK` (35). If `Properties[0]` > 0, also sets `BATTLE_PET_STATE_MECHANIC_STUNNED` (22). Kick uses 0 (interrupt only), Horn Attack uses 1 (interrupt + stun).
+
+**`HandleVengeance`** (Effect 197): `Damage = caster->LastHitTaken × Properties[0] / 100`. Vengeance (Darkmoon Zeppelin): 100% of damage taken.
+
+### Stun/Sleep Architecture
+
+Two separate effects work together for CC:
+
+**Effect 177 (`HandleStun`)**: Immunity gate only. Checks `target->States[Properties[0]]` (always 149 = RESILITANT, the Humanoid racial passive). If > 0, sets `IMMUNE` flag and returns. Does NOT apply the stun itself.
+
+**Effect 178 (`HandlePowerlessAura`)**: Applies the actual stun/sleep via an aura. Checks if target already has the state (Properties[3] = 149), reports immune if so. Otherwise applies aura for `Properties[2]` turns. The aura should set `BATTLE_PET_STATE_MECHANIC_STUNNED` (22) via `BattlePetAbilityState.db2` entries — but see the BattlePetAbilityState bug below.
+
+**Effect 52 (`HandleNegativeAura`)**: Secondary stun mechanism. Properties[1] is the chance (e.g., 25 for Headbutt's 25% stun). Applies a debuff aura for Properties[2] turns. The 25% chance is implemented as `CalculateHit(25)` within the handler.
+
+**Execution order**: Determined by `EffectPropertyBit` — typically 177 (bit 2) fires before 52 (bit 3).
+
+### Critical Bug: BattlePetAbilityState Unk Field
+
+`BattlePetAbilityEffect.db2` field[3] (called `Unk`) contains the ability ID for `BattlePetAbilityState.db2` lookups. However, `BattlePetAura::OnApply()` uses `m_ability` (which is set from `TriggerAbility` = field[2] = often 0) instead of the Unk field.
+
+This means:
+- **Effect 49** (47 abilities): Intended to be a "state aura" that applies `BattlePetAbilityState` modifiers. Since `TriggerAbility` is 0 and Unk is correct (e.g., 927 for Headbutt's stun, 340 for Burrow), **no states are applied**. Burrow, Lift-Off, Meteor Strike, and other delayed-untargetable abilities don't work.
+- **Effect 52/178 stun auras**: The aura is created but its `OnApply()` never matches `BattlePetAbilityState` entries (which use the Unk ability ID, not TriggerAbility). **Stun/sleep from auras does not actually apply `BATTLE_PET_STATE_MECHANIC_STUNNED` (state 22).**
+
+**Fix needed**: In `PetBattle::AddAura()`, pass the Unk field (or a third ability parameter) to `BattlePetAura` so `OnApply()` can query the correct `BattlePetAbilityState` entries. Alternatively, pass `m_effectEntry->Unk` as the `ability` parameter to `AddAura` for effect types 49, 52, 178.
+
+### State Reference (Key IDs for Handler Logic)
+
+| ID | Constant | Type | Used By |
+|----|----------|------|---------|
+| 1 | IS_DEAD | Bool | Death tracking |
+| 21 | MECHANIC_POISONED | Bool | Poison DoT |
+| 22 | MECHANIC_STUNNED | Bool | Stun/sleep — set by BattlePetAbilityState |
+| 28 | CONDITION_WAS_DAMAGED_THIS_ROUND | Bool | Counterstrike conditional |
+| 29 | UNTARGETABLE | Bool | Burrow, Lift-Off |
+| 31 | LAST_HIT_TAKEN | Int | Vengeance damage reflection |
+| 32 | LAST_HIT_DEALT | Int | HealWithLastHit, HealPctDealt |
+| 34 | MECHANIC_BURNING | Bool | Conflagrate conditional |
+| 35 | TURN_LOCK | Bool | Interrupt effect |
+| 52 | MECHANIC_CHILLED | Bool | Ice Lance conditional |
+| 64 | MECHANIC_WEBBED | Bool | CanAttack check |
+| 77 | MECHANIC_BLEEDING | Bool | Maul conditional |
+| 82 | MECHANIC_BLIND | Bool | Light conditional |
+| 149 | RESILITANT | Bool | Humanoid racial — immunity to stun/sleep |
+
+`BATTLE_PET_MAX_STATES = 163` — state IDs beyond named constants exist in `BattlePetAbilityState.db2` (e.g., states 91, 100, 200) but are outside the `enum`.
+
+### Effect 49 (StateAura) — Deferred
+
+47 abilities use Effect 49 including Burrow, Lift-Off, Asleep, Meteor Strike, Supercharged. Properties[0] is 100 or 200 (turn delay?), Properties[1] is always 0. Not safe to remap to `HandleSetState` because:
+- Properties[0] values (100, 200) are not valid state IDs (BATTLE_PET_MAX_STATES = 163)
+- The actual state application requires `BattlePetAbilityState` lookups which the aura system doesn't do correctly (see Critical Bug above)
+
+Needs a dedicated `HandleStateAura` that creates an aura whose `OnApply()` queries `BattlePetAbilityState` using the Unk field.
+
+### Other Deferred Effects (~32 remain as HandleNull)
+
+| Effects | Count | Description |
+|---------|-------|-------------|
+| 30, 43, 45 | 3 | Chomp-style sequential triggers (Trufflesnuffle ability) |
+| 55, 56, 57, 78, 111, 121, 122, 123, 124, 125 | 10 | Pet swap/swap-to-back/swap-target mechanics |
+| 58 | 1 | Repeat last ability |
+| 61 | 2 | Heal % of max health (distinct from HealPct) |
+| 65, 67 | 2 | Channeled attacks (Dreadful Breath, Incendiary Breath) |
+| 72, 73, 74, 75, 99 | 5 | Multi-damage per state (Mana Surge, Water Jet, Geyser) |
+| 77, 137, 138 | 3 | Shield/absorb/bubble mechanics |
+| 86, 142, 143, 144 | 4 | Sonic barrier, reflective shield, immortal fortitude |
+| 97, 107, 108, 112, 116, 117, 128, 129, 132, 133, 134, 140, 141, 147, 156, 157, 158, 159, 170, 171, 172, 194 | ~22 | Niche/one-off mechanics (wonderpets, watchers, swarm, decoy, overcharge, weather variants) |
+
 ## Current State
 
 - ✅ Database provisioning: all 51 pet battle tamers have spawns, quest links, and pet teams
@@ -235,5 +428,6 @@ INSERT INTO creature (id, map, zoneId, areaId, spawnMask, phaseMask, position_x,
 - ✅ XP/achievement credit on player victory
 - ✅ Weather effects: applied to all pets on both teams, persist through swaps
 - ✅ Quest credit: `QUEST_OBJECTIVE_WINPETBATTLEAGAINSTNPC` objectives complete on trainer victory
+- ✅ Bench pet 3D cages: fixed — `StartBattle()` now sends `PET_BATTLE_EFFECT_ACTIVE_PET` so client doesn't render non-active pets with cage models
 - ⏳ Multi-pet wild battles: not implemented (TODO at `PetBattle.cpp:434` — `AddWildBattlePet()` only adds one pet)
 - ⏳ Trainer AI: random ability selection (acceptable for 3 abilities)

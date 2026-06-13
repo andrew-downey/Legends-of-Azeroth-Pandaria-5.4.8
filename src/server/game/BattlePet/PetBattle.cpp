@@ -442,6 +442,14 @@ PetBattle::~PetBattle()
 void PetBattle::StartBattle()
 {
     for (auto&& team : m_teams)
+        if (BattlePet* activePet = team->GetActivePet())
+        {
+            PetBattleEffect effect{ PET_BATTLE_EFFECT_ACTIVE_PET, activePet->GetGlobalIndex() };
+            effect.SetActivePet(activePet->GetGlobalIndex());
+            m_effects.push_back(effect);
+        }
+
+    for (auto&& team : m_teams)
     {
         if (Player* player = team->GetOwner())
         {
@@ -523,6 +531,7 @@ void PetBattle::EndBattle(PetBattleTeam* lostTeam, bool forfeit)
                             xp += ((opponentBattlePet->GetLevel() + 9) * (levelDifference + 5)) / team->SeenAction.size();
                         }
 
+                        xp = uint16(xp * sWorld->getRate(RATE_BATTLE_PET_XP));
                         battlePet->SetXP(xp);
                     }
                 }

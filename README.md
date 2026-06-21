@@ -1,5 +1,13 @@
 **Mists of Pandaria 5.4.8 Build 18414**
 
+> **Notable additions over base Legends of Azeroth:**
+> * **Pet Battle System** — Full pet battle implementation with weather, states, and racial passives (Dragonkin, Undead, etc.)
+> * **Battle Pet Trainer Battles** — Fully scripted trainer NPC encounters
+> * **Wild Pet Spawns** — Hundreds of retail-accurate wild pet spawns across Kalimdor, Eastern Kingdoms, Northrend, Deepholm, and more
+> * **Tillers Farm System** — Complete Valley of the Four Winds farming (16 plots, 10 companions, crop problems, daily reset cycle, per-NPC friendships)
+> * **Database fixes** — Quests, creatures, zones, flying mounts, instances (Auchenai Crypts), and dungeon reputation corrections
+> * **SQL migration framework** — All changes tracked as sequential migrations in `sql/updates/`
+
 Discord link: https://discord.gg/byBCHbwJEg
 
 Client exe files" https://mega.nz/file/xUJDkIDA#I3TMdPymMw8ISNwIUgSaXLl5oHJHYFxAKyPNMXUQjgY

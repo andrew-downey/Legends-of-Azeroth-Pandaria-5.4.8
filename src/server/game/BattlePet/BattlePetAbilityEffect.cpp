@@ -89,7 +89,7 @@ static BattlePetAbilityEffectHandler Handlers[PET_BATTLE_TOTAL_ABILITY_EFFECTS] 
     /* Effect 058 */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },
     /* Effect 059 */ { &BattlePetAbilityEffect::HandleLowHpDamage,              PET_BATTLE_ABILITY_TARGET_TARGET },
     /*   UNUSED   */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },
-    /* Effect 061 */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },
+    /* Effect 061 */ { &BattlePetAbilityEffect::HandleHealCasterPercentNotState,   PET_BATTLE_ABILITY_TARGET_CASTER },
     /* Effect 062 */ { &BattlePetAbilityEffect::HandlePctHealthDamage,          PET_BATTLE_ABILITY_TARGET_TARGET },
     /* Effect 063 */ { &BattlePetAbilityEffect::HandlePeriodicPositiveTrigger,  PET_BATTLE_ABILITY_TARGET_CASTER },
     /*   UNUSED   */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },
@@ -103,9 +103,9 @@ static BattlePetAbilityEffectHandler Handlers[PET_BATTLE_TOTAL_ABILITY_EFFECTS] 
     /* Effect 072 */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },
     /* Effect 073 */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },
     /* Effect 074 */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },
-    /* Effect 075 */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },
+    /* Effect 075 */ { &BattlePetAbilityEffect::HandleDamageToggleAura,         PET_BATTLE_ABILITY_TARGET_TARGET },
     /* Effect 076 */ { &BattlePetAbilityEffect::HandleDamageToggleAura,         PET_BATTLE_ABILITY_TARGET_TARGET },
-    /* Effect 077 */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },
+    /* Effect 077 */ { &BattlePetAbilityEffect::HandleDamageToggleAura,         PET_BATTLE_ABILITY_TARGET_TARGET },
     /* Effect 078 */ { &BattlePetAbilityEffect::HandleNull,                     PET_BATTLE_ABILITY_TARGET_NONE   },
     /* Effect 079 */ { &BattlePetAbilityEffect::HandleDamage,                   PET_BATTLE_ABILITY_TARGET_TARGET },
     /* Effect 080 */ { &BattlePetAbilityEffect::HandleWeatherAura,              PET_BATTLE_ABILITY_TARGET_ALL    },
@@ -394,6 +394,10 @@ uint32 BattlePetAbilityEffect::CalculateDamage(uint32 damage)
         if ((m_caster->GetCurrentHealth() * 100 / m_caster->GetMaxHealth()) < 50)
             modPetTypePct += 25;
 
+    // Dragonkin (240): deal 50% additional damage the round after reducing enemy below 50%
+    if (m_caster->States[BATTLE_PET_STATE_PASSIVE_DRAGON] && m_caster->States[BATTLE_PET_STATE_PASSIVE_DRAGON_BOOST])
+        modPetTypePct += 50;
+
     damage += CalculatePct(damage, modPct);
     damage += CalculatePct(damage, m_caster->States[BATTLE_PET_STATE_MOD_DAMAGE_DEALT_PCT]);
     damage += CalculatePct(damage, m_target->States[BATTLE_PET_STATE_MOD_DAMAGE_TAKEN_PCT]);
@@ -404,6 +408,11 @@ uint32 BattlePetAbilityEffect::CalculateDamage(uint32 damage)
     if (m_target->States[BATTLE_PET_STATE_PASSIVE_MAGIC])
         if (damage * 100 / m_target->GetMaxHealth() >= 35)
             damage = CalculatePct(m_target->GetMaxHealth(), 35);
+
+    // Aquatic (249): DOT damage reduced by 50%
+    if (m_target->States[BATTLE_PET_STATE_PASSIVE_AQUATIC])
+        if (m_flags & PET_BATTLE_EFFECT_FLAG_PERIODIC)
+            damage += CalculatePct(damage, -50);
 
     return damage;
 }
@@ -416,6 +425,7 @@ void BattlePetAbilityEffect::Damage(BattlePet* target, uint32 damage)
         damage = 0;
 
     // update target health and notify client
+    uint32 oldHp = target->GetCurrentHealth();
     uint32 health = damage > target->GetCurrentHealth() ? 0 : target->GetCurrentHealth() - damage;
     SetHealth(target, health);
 
@@ -428,6 +438,15 @@ void BattlePetAbilityEffect::Damage(BattlePet* target, uint32 damage)
         // update caster states
         m_caster->States[BATTLE_PET_STATE_CONDITION_DID_DAMAGE_THIS_ROUND] = 1;
         m_caster->States[BATTLE_PET_STATE_LAST_HIT_DEALT] = damage;
+
+        // Dragonkin (240): track when target drops below 50% HP
+        if (m_caster != m_target && m_caster->States[BATTLE_PET_STATE_PASSIVE_DRAGON]
+            && !m_caster->States[BATTLE_PET_STATE_PASSIVE_DRAGON_BOOST])
+        {
+            uint32 pctThreshold = CalculatePct(m_target->GetMaxHealth(), 50);
+            if (oldHp > pctThreshold && target->GetCurrentHealth() <= pctThreshold)
+                m_caster->States[BATTLE_PET_STATE_PASSIVE_DRAGON_BOOST] = 1;
+        }
     }
 
     // TODO: PETBATTLE_ABILITY_TURN0_PROC_ON_DAMAGE_DEALT and PETBATTLE_ABILITY_TURN0_PROC_ON_DAMAGE_TAKEN
@@ -467,8 +486,26 @@ void BattlePetAbilityEffect::SetHealth(BattlePet* target, uint32 value)
         // target battle pet has died
         if (!value && target->IsAlive() && !target->States[BATTLE_PET_STATE_UNKILLABLE])
         {
-            m_flags |= PET_BATTLE_EFFECT_FLAG_HIT;
-            m_petBattle->Kill(m_caster, target, m_effectEntry->Id, m_flags);
+            // Mechanical passive: revive with 25% HP (once per battle)
+            if (target->States[BATTLE_PET_STATE_PASSIVE_MECHANICAL])
+            {
+                target->States[BATTLE_PET_STATE_PASSIVE_MECHANICAL] = 0;
+                value = CalculatePct(target->GetMaxHealth(), 25);
+                target->SetCurrentHealth(value);
+            }
+            // Undead passive: survive as unkillable for 1 round (once per battle)
+            else if (target->States[BATTLE_PET_STATE_PASSIVE_UNDEAD])
+            {
+                target->States[BATTLE_PET_STATE_PASSIVE_UNDEAD] = 0;
+                target->States[BATTLE_PET_STATE_UNKILLABLE] = 1;
+                value = 1;
+                target->SetCurrentHealth(value);
+            }
+            else
+            {
+                m_flags |= PET_BATTLE_EFFECT_FLAG_HIT;
+                m_petBattle->Kill(m_caster, target, m_effectEntry->Id, m_flags);
+            }
         }
     }
 
@@ -487,6 +524,19 @@ void BattlePetAbilityEffect::HandleHeal()
 {
     CalculateHit(m_effectEntry->Properties[1]);
     Heal(m_target, CalculateHeal(m_effectEntry->Properties[0]));
+}
+
+// Effect 61: HealPct, Accuracy, CasterStateReq, TargetStateReq
+void BattlePetAbilityEffect::HandleHealCasterPercentNotState()
+{
+    if (m_effectEntry->Properties[2] && !m_caster->States[m_effectEntry->Properties[2]])
+        return;
+    if (m_effectEntry->Properties[3] && !m_target->States[m_effectEntry->Properties[3]])
+        return;
+
+    CalculateHit(m_effectEntry->Properties[1]);
+    uint32 heal = CalculateHeal(CalculatePct(m_caster->GetMaxHealth(), m_effectEntry->Properties[0]));
+    Heal(m_caster, heal);
 }
 
 // Effect 24: Points, Accuracy, IsPeriodic, OverideIndex
@@ -721,7 +771,32 @@ void BattlePetAbilityEffect::HandlePowerlessAura()
 // Effect 80: TurnOffset, Accuracy, Duration, MaxAllowed
 void BattlePetAbilityEffect::HandleWeatherAura()
 {
-    m_petBattle->AddAura(m_caster, m_target, m_effectEntry->TriggerAbility, m_effectEntry->Id, m_effectEntry->Properties[2], m_flags, m_effectEntry->Properties[3]);
+    uint32 newWeather = m_effectEntry->TriggerAbility;
+
+    // If different weather is already active, expire old weather from all pets first
+    if (m_petBattle->GetWeatherAbility() != 0 && m_petBattle->GetWeatherAbility() != newWeather)
+    {
+        m_petBattle->ClearWeatherStates();
+        for (auto&& team : { m_petBattle->Challenger(), m_petBattle->Opponent() })
+            for (auto&& pet : team->BattlePets)
+                for (auto&& aura : pet->Auras)
+                    if (!aura->HasExpired() && aura->GetAbility() == m_petBattle->GetWeatherAbility())
+                        aura->Expire();
+    }
+
+    // First invocation only: apply weather to all 6 pets across both teams
+    if (m_petBattle->GetWeatherAbility() != newWeather)
+    {
+        for (auto&& team : { m_petBattle->Challenger(), m_petBattle->Opponent() })
+            for (auto&& pet : team->BattlePets)
+                if (!pet->States[BATTLE_PET_STATE_PASSIVE_ELEMENTAL])
+                    m_petBattle->AddAura(m_caster, pet, newWeather, m_effectEntry->Id, m_effectEntry->Properties[2], m_flags, m_effectEntry->Properties[3]);
+
+        m_petBattle->ApplyWeatherStates(newWeather, true);
+        m_petBattle->SetWeatherAbility(newWeather);
+        m_petBattle->SetWeatherDuration(m_effectEntry->Properties[2]);
+        m_petBattle->SetWeatherAbilityEffect(m_effectEntry->Id);
+    }
 }
 
 // Effect 33, 53: Pct, Accuracy
@@ -817,6 +892,13 @@ void BattlePetAbilityEffect::HandleInterrupt()
 {
     CalculateHit(m_effectEntry->Properties[1]);
 
+    // Critter (238): immune to stun, root, and sleep effects
+    if (m_target->States[BATTLE_PET_STATE_PASSIVE_CRITTER])
+    {
+        m_flags |= PET_BATTLE_EFFECT_FLAG_IMMUNE;
+        return;
+    }
+
     m_petBattle->UpdatePetState(m_caster, m_target, m_effectEntry->Id, BATTLE_PET_STATE_TURN_LOCK, 1);
 
     if (m_effectEntry->Properties[0])
@@ -853,11 +935,7 @@ void BattlePetAbilityEffect::HandleExtraAttackIfSlower()
 // Effect 164: Points, Chance
 void BattlePetAbilityEffect::HandleMultiStrike()
 {
-    Damage(m_target, CalculateDamage(m_effectEntry->Properties[0]));
-
     uint32 chance = m_effectEntry->Properties[1];
-    if (chance && roll_chance_i(chance))
-        Damage(m_target, CalculateDamage(m_effectEntry->Properties[0]));
     if (chance && roll_chance_i(chance))
         Damage(m_target, CalculateDamage(m_effectEntry->Properties[0]));
 }

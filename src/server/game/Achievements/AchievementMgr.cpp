@@ -3799,8 +3799,15 @@ bool AchievementMgr::AdditionalRequirementsSatisfied(ModifierTreeNode const* tre
                 return count >= reqValue;
             }
             case ACHIEVEMENT_CRITERIA_ADDITIONAL_CONDITION_PET_BATTLE_AGAINST_TAMER:
-                // Not Impemented
-                return false;
+            {
+                PetBattle* battle = sPetBattleSystem->GetPlayerPetBattle(referencePlayer->GetGUID());
+                if (!battle)
+                    return false;
+                Creature* creature = battle->Opponent()->GetWildBattlePet();
+                if (!creature)
+                    return false;
+                return creature->GetEntry() == reqValue;
+            }
             case ACHIEVEMENT_CRITERIA_ADDITIONAL_CONDITION_NEED_CHALLENGE_MEDAL:
                 return miscValue2 >= reqValue;
             case ACHIEVEMENT_CRITERIA_ADDITIONAL_CONDITION_BATTLE_PET_QUALITY:

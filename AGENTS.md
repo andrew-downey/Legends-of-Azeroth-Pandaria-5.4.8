@@ -9,7 +9,6 @@ WoW Mists of Pandaria 5.4.8 server emulator (TrinityCore/SkyFire fork). C++20, C
 ./build.sh configure --debug  # Debug build
 ./build.sh build              # cmake --build -> worldserver + authserver
 ./build.sh install            # versioned symlinks in $HOME/warcraft-server (prunes >7 days)
-./build.sh restore            # restore previous binaries
 ```
 
 Manual CMake equivalent:
@@ -24,7 +23,7 @@ CI reference builds:
 - **macOS arm64** `cmake -GNinja -B build -DWITH_WARNINGS=1 -DELUNA=0`, `ninja`
 - **Windows** `cmake .. -DTOOLS=ON -DELUNA=1 -A x64`, `cmake --build . --config RelWithDebInfo`
 
-## Key CMake options (all in `cmake/options.cmake`)
+## Key CMake options (defined in `cmake/options.cmake` unless noted)
 
 | Option | Default | What |
 |---|---|---|
@@ -36,6 +35,7 @@ CI reference builds:
 | `USE_MODULES` | ON | Module system (auto-discovers `modules/` subdirectories) |
 | `WITH_SANITIZER` | OFF | AddressSanitizer (GCC only) |
 | `WITH_COREDEBUG` | OFF | Additional debug assertions/logging |
+| `BUILD_DEPLOY` | ON (UNIX) | Deployment-optimized build (sets install prefix to `/server/wow/horizon`) |
 | `UPDATER` | OFF | Build updater tool |
 | `NOJEM` | (implicit OFF) | Disable jemalloc (use for valgrind) |
 
@@ -103,6 +103,7 @@ Full reference in `SAI.md`. Three patterns that come up most often:
 - **NEVER** start a build unless the user explicitly asks for it.
 - **ALWAYS** use `./build.sh` in the local project directory for any build operations (it handles ccache + gold linker + correct flags).
 - **ALWAYS** save database writes as SQL migration files in `sql/updates/world/` or `sql/updates/characters/` — NEVER run UPDATE/INSERT/DELETE directly against the database without having a migration file first.
+- **NEVER** use sed, Python, or any other method to modify files during plan/read-only mode. Respect tool restrictions and use the designated edit tools only when explicitly in build/editing mode.
 
 ## Tillers Farm
 
@@ -115,7 +116,7 @@ Full implementation of the Tillers farm system for Valley of Four Winds (zone 10
   - Phase 1 (PUBLIC_FARM_MASK = 128): Static farm objects visible to pre-quest players
   - Phase 2 (phaseMask = `(guid << 8) | 1`): Private dynamic farm, fully isolated per player
 - **Isolation via `_privateObjectOwner`**: All spawned objects (Yoon, soil, companions) have owner set — prevents cross-player visibility
-- **Content stored in `PlayerFarmState` struct**: `farmState` (obstacle bitmask), `plotsUnlocked`, `companions` (bitmask), `lastGrowthTick`
+- **Content stored in `PlayerFarmState` struct**: `farmState` (obstacle bitmask), `plotsUnlocked`, `bestFriendUnlocks` (bitmask), `lastGrowthTick`
 
 ### Key Files
 
@@ -129,7 +130,7 @@ Full implementation of the Tillers farm system for Valley of Four Winds (zone 10
 ### Companion System
 
 - **10 companions total**: 9 Best Friends (Exalted reputation unlock) + 1 Lost Dog (quest 30526)
-- **Bitmask storage**: `PlayerFarmState.bestFriendUnlocks` (uint8) — 16 bits available
+- **Bitmask storage**: `PlayerFarmState.bestFriendUnlocks` (uint16) — 16 bits available
 - **Best Friend unlock constants**:
   - `BEST_FRIEND_SHAGGY` (1<<0) — Farmer Fung Best Friend — Yak (85814)
   - `BEST_FRIEND_FIFI` (1<<1) — Haohan Mudclaw Best Friend — Mushan (85791)
@@ -141,9 +142,11 @@ Full implementation of the Tillers farm system for Valley of Four Winds (zone 10
   - `BEST_FRIEND_FURNITURE` (1<<7) — Tina Mudclaw Best Friend — Furniture (237244)
   - `BEST_FRIEND_MAILBOX` (1<<8) — Gina Mudclaw Best Friend — Mailbox (237242)
   - `BEST_FRIEND_LOST_DOG` (1<<9) — Lost Dog quest (30526) — Dog (85826)
-- **Best Friend detection**: `IsBestFriend()` checks Tillers reputation rank (faction 1934) >= REPUTATION_EXALTED
+- **Best Friend detection**: `IsBestFriend()` checks per-NPC friendship faction (1275–1283) reputation >= Exalted (42000). Each Tillers NPC has its own faction in Faction.dbc.
+- **Companion metadata**: `BestFriendData` struct maps bitmask → creature/GO entry → faction ID. `BestFriendCompanions[10]` array provides indexed lookup for all 10 companions (9 reputation + 1 quest).
 - **Lost Dog**: Quest 30526 completion via `IsQuestRewarded(30526)`
-- **Auto-unlock on zone enter**: `UpdateCompanionsOnZoneEnter()` called when player enters VFW
+- **Auto-unlock on zone enter**: `UpdateBestFriendUnlockState()` called from `SpawnPlayerFarm()` when player enters VFW
+- **Scene builder**: `SpawnPlayerFarmCompanions()` iterates `bestFriendUnlocks` bitmask, looks up positions from creature/GO table, and spawns creatures via `SpawnBestFriendUnlock()` or GOs via `SpawnBestFriendUnlockGO()`. GOs tracked in `_playerBestFriendUnlocks` alongside creatures for unified cleanup.
 
 ### Database Schema
 
@@ -157,6 +160,7 @@ Full implementation of the Tillers farm system for Valley of Four Winds (zone 10
   - `guid`, `plot_id`, `state`, `seed_entry`, `needs_watering`, `has_pests`, `maturity_timestamp`
 - **SQL migrations**: Located in `sql/updates/world/` and `sql/updates/characters/`
 - **Latest migration**: `2026_06_03_08_tillers_best_friend_unlocks_rename.sql` — renames `companions` → `best_friend_unlocks`, ensures default rows
+- **Companion migration**: `2026_06_20_01_tillers_companions.sql` — creature_template/GO entries + spawn positions for all 10 companions
 
 ### Farm State Progression
 
@@ -186,8 +190,15 @@ Full implementation of the Tillers farm system for Valley of Four Winds (zone 10
 - SQL migration for `best_friend_unlocks` column rename
 - Full persistence: `LoadPlayerState()` loads `best_friend_unlocks`, `SavePlayerFarm()` saves via REPLACE INTO
 - New player state row creation via `REPLACE INTO player_farm_state`
+- `SpawnPlayerFarmCompanions()` integrated into `SpawnPlayerFarm()` scene builder — iterates `bestFriendUnlocks` bits, spawns creatures/GOs
+- Per-NPC friendship faction checks (1275–1283) in `IsBestFriend()` — replaces single-faction 1934 check
+- GO companion spawning via `SpawnBestFriendUnlockGO()` with unified tracking in `_playerBestFriendUnlocks`
+- `BestFriendData` struct + `BestFriendCompanions[10]` static array for indexed metadata lookup
+- `IsGameObjectEntry()` helper for branching creature vs GO spawning
+- `RemoveBestFriendUnlocks()` handles both creature and GO cleanup via `IsCreature()`/`IsGameObject()` type check
+- SQL migration `2026_06_20_01_tillers_companions.sql` — creature_template/GO entries + spawn positions for all 10 companions
+- Seed-to-vegetable item mapping (`GetVegetableForSeed()`) supporting 9 seed types with retail vegetable entries
+- `HarvestCrop` reward fix — 5 vegetables base yield (retail), Tillers reputation scaling per harvest (125 at Neutral → 15 at Exalted)
 
 **Remaining work**:
-- Implement best friend unlock spawning in `SpawnPlayerFarm()` scene builder
 - Test best friend unlock flow on zone enter
-- Verify creature/GO entries against database

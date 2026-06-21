@@ -736,12 +736,13 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     PrepareStatement(CHAR_DEL_PLAYER_FARM_PLOTS, "DELETE FROM player_farm_plots WHERE guid = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_INS_PLAYER_FARM_STATE, "INSERT INTO player_farm_state (guid, farm_phase, plots_unlocked, last_growth_tick, best_friend_unlocks) VALUES (?, ?, ?, ?, ?)", CONNECTION_ASYNC);
     PrepareStatement(CHAR_INS_PLAYER_FARM_PLOT, "INSERT INTO player_farm_plots (guid, plot_id, state, seed_entry, needs_watering, has_pests, maturity_timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC);
-    PrepareStatement(CHAR_UPD_PLAYER_FARM_STATE, "REPLACE INTO player_farm_state (guid, farm_phase, plots_unlocked, last_growth_tick, best_friend_unlocks) VALUES (?, ?, ?, ?, ?)", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_UPD_PLAYER_FARM_STATE, "REPLACE INTO player_farm_state (guid, farm_phase, plots_unlocked, best_friend_unlocks) VALUES (?, ?, ?, ?)", CONNECTION_ASYNC);
     PrepareStatement(CHAR_UPD_PLAYER_FARM_PLOT_PLANT, "UPDATE player_farm_plots SET state = ?, seed_entry = ?, needs_watering = ?, has_pests = ?, maturity_timestamp = ? WHERE guid = ? AND plot_id = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_UPD_PLAYER_FARM_PLOT_RESET, "UPDATE player_farm_plots SET state = ?, seed_entry = ?, needs_watering = ?, has_pests = ?, maturity_timestamp = ? WHERE guid = ? AND plot_id = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_UPD_PLAYER_FARM_PLOT_WATER, "UPDATE player_farm_plots SET needs_watering = ? WHERE guid = ? AND plot_id = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_UPD_PLAYER_FARM_PLOT_PESTS, "UPDATE player_farm_plots SET has_pests = ? WHERE guid = ? AND plot_id = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_UPD_PLAYER_FARM_PLOT_REPAIR, "UPDATE player_farm_plots SET state = ?, seed_entry = ? WHERE guid = ? AND plot_id = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_UPD_PLAYER_FARM_PLOT_STATE, "UPDATE player_farm_plots SET state = ? WHERE guid = ? AND plot_id = ?", CONNECTION_ASYNC);
 }
 
 CharacterDatabaseConnection::CharacterDatabaseConnection(MySQLConnectionInfo& connInfo, ConnectionFlags connectionFlags) : MySQLConnection(connInfo, connectionFlags)

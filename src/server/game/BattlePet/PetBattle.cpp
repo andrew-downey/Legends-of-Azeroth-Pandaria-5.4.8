@@ -20,6 +20,7 @@
 #include "BattlePetMgr.h"
 #include "BattlePetSpawnMgr.h"
 #include "BattlePetTrainerMgr.h"
+#include "DBCStores.h"
 #include "Player.h"
 #include "Random.h"
 
@@ -479,6 +480,8 @@ void PetBattle::EndBattle(PetBattleTeam* lostTeam, bool forfeit)
     if (lostTeam)
         m_winningTeam = m_teams[!lostTeam->GetTeamIndex()];
 
+    ClearWeatherStates();
+
     for (auto team : m_teams)
     {
         for (auto battlePet : team->BattlePets)
@@ -687,6 +690,11 @@ void PetBattle::HandleRound()
             battlePet->States[BATTLE_PET_STATE_CONDITION_DID_DAMAGE_THIS_ROUND] = 0;
         }
 
+        // Dragonkin (240): promote triggered boost to active for this round
+        for (auto&& battlePet : team->BattlePets)
+            if (battlePet->States[BATTLE_PET_STATE_PASSIVE_DRAGON_BOOST] == 1)
+                battlePet->States[BATTLE_PET_STATE_PASSIVE_DRAGON_BOOST] = 2;
+
         // store main stat states before they are modified during the round
         oldStates[team->GetTeamIndex()][BATTLE_PET_STATE_STAT_SPEED] = team->GetActivePet()->GetSpeed();
         oldStates[team->GetTeamIndex()][BATTLE_PET_STATE_STAT_POWER] = team->GetActivePet()->GetPower();
@@ -736,6 +744,32 @@ void PetBattle::HandleRound()
         effect.SetNoTarget();
         m_effects.push_back(effect);
     }
+
+    // Humanoid (236): recover 5% max health if dealt damage this round
+    for (auto&& team : m_teams)
+        if (auto pet = team->GetActivePet())
+            if (pet->IsAlive() && pet->States[BATTLE_PET_STATE_PASSIVE_HUMANOID]
+                && pet->States[BATTLE_PET_STATE_CONDITION_DID_DAMAGE_THIS_ROUND])
+            {
+                uint32 health = std::min<uint32>(pet->GetCurrentHealth() + CalculatePct(pet->GetMaxHealth(), 5), pet->GetMaxHealth());
+                pet->SetCurrentHealth(health);
+                PetBattleEffect healEffect{ PET_BATTLE_EFFECT_SET_HEALTH, pet->GetGlobalIndex(), PET_BATTLE_EFFECT_FLAG_HEAL, 0 };
+                healEffect.SetTurn(team->GetTurn() + 2, 1);
+                healEffect.UpdateHealth(pet->GetGlobalIndex(), health);
+                m_effects.push_back(healEffect);
+            }
+
+    // Undead passive: pets that survived via unkillable now succumb at round end
+    for (auto&& team : m_teams)
+        if (auto activePet = team->GetActivePet())
+            if (activePet->States[BATTLE_PET_STATE_UNKILLABLE])
+                Kill(activePet, activePet, 0, PET_BATTLE_EFFECT_FLAG_NONE);
+
+    // Dragonkin (240): clear boost after its active round
+    for (auto&& team : m_teams)
+        for (auto&& battlePet : team->BattlePets)
+            if (battlePet->States[BATTLE_PET_STATE_PASSIVE_DRAGON_BOOST] == 2)
+                battlePet->States[BATTLE_PET_STATE_PASSIVE_DRAGON_BOOST] = 0;
 
     // Auto-swap trainer's dead pet to an alive one before sending round result
     // The client needs this swap in the same round as the pet death to proceed correctly
@@ -890,9 +924,18 @@ bool PetBattle::Cast(BattlePet* caster, uint32 abilityId, uint8 turn, int8 procT
         if (abilityTurnEntry->AbilityId != abilityId)
             continue;
 
-        // make sure multiple turn ability has done it's full duration
-        if (abilityTurnEntry->Duration > 1 && abilityTurnEntry->Duration != turn)
-            continue;
+        // For direct casts (turn > 0), only run the matching duration entry.
+        // For proc casts (turn == 0), only run Duration=1 (initial effects).
+        if (turn > 0)
+        {
+            if (abilityTurnEntry->Duration != turn)
+                continue;
+        }
+        else
+        {
+            if (abilityTurnEntry->Duration > 1)
+                continue;
+        }
 
         if (abilityTurnEntry->ProcType != procType)
             continue;
@@ -952,6 +995,36 @@ void PetBattle::SwapActivePet(BattlePet* battlePet, bool ignoreAlive)
     effect.SetActivePet(battlePet->GetGlobalIndex());
 
     m_effects.push_back(effect);
+}
+
+void PetBattle::ClearWeatherStates()
+{
+    for (auto&& [stateId, delta] : m_weatherStateDeltas)
+    {
+        PetBattleEffect effect{ PET_BATTLE_EFFECT_SET_STATE, PET_BATTLE_NULL_PET_INDEX, PET_BATTLE_EFFECT_FLAG_NONE, 0 };
+        effect.UpdateState(PET_BATTLE_NULL_PET_INDEX, stateId, static_cast<uint32>(0));
+        m_effects.push_back(effect);
+    }
+    m_weatherStateDeltas.clear();
+}
+
+void PetBattle::ApplyWeatherStates(uint32 ability, bool apply)
+{
+    for (uint32 i = 0; i < sBattlePetAbilityStateStore.GetNumRows(); i++)
+    {
+        auto stateEntry = sBattlePetAbilityStateStore.LookupEntry(i);
+        if (!stateEntry)
+            continue;
+        if (stateEntry->AbilityId != ability)
+            continue;
+
+        int32 value = apply ? stateEntry->Value : 0;
+        m_weatherStateDeltas[stateEntry->StateId] = value;
+
+        PetBattleEffect effect{ PET_BATTLE_EFFECT_SET_STATE, PET_BATTLE_NULL_PET_INDEX, PET_BATTLE_EFFECT_FLAG_NONE, 0 };
+        effect.UpdateState(PET_BATTLE_NULL_PET_INDEX, stateEntry->StateId, static_cast<uint32>(value));
+        m_effects.push_back(effect);
+    }
 }
 
 void PetBattle::UpdatePetState(BattlePet* source, BattlePet* target, uint32 abilityEffect, uint32 state, int32 value, PetBattleEffectFlags flags)

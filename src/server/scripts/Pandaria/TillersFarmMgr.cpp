@@ -21,6 +21,7 @@
 #include "Log.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
+#include "ReputationMgr.h"
 #include "ScriptMgr.h"
 #include "TemporarySummon.h"
 #include "World.h"
@@ -48,7 +49,7 @@ bool TillersFarmMgr::LoadPlayerState(Player* player)
     uint32 guidLow = player->GetGUID().GetCounter();
 
     QueryResult result = CharacterDatabase.PQuery(
-        "SELECT farm_phase, plots_unlocked, last_growth_tick, best_friend_unlocks FROM player_farm_state WHERE guid = %u",
+        "SELECT farm_phase, plots_unlocked, best_friend_unlocks FROM player_farm_state WHERE guid = %u",
         guidLow);
 
     if (result)
@@ -56,8 +57,7 @@ bool TillersFarmMgr::LoadPlayerState(Player* player)
         Field* fields = result->Fetch();
         uint8 phase   = fields[0].GetUInt8();
         uint8 plots   = fields[1].GetUInt8();
-        time_t tick   = static_cast<time_t>(fields[2].GetUInt64());
-        uint16 bestFriendUnlocks = fields[3].GetUInt16();
+        uint16 bestFriendUnlocks = fields[2].GetUInt16();
 
         // Validate loaded state
         if (phase != FARM_STATE_FULL && phase != FARM_STATE_WEEDS_CLEARED && phase != FARM_STATE_WAGON_CLEARED && phase != FARM_STATE_ALL_CLEARED)
@@ -73,18 +73,9 @@ bool TillersFarmMgr::LoadPlayerState(Player* player)
             return false;
         }
 
-        // last_growth_tick should not be in the future by more than a day
-        time_t now = time(nullptr);
-        if (tick > now + 86400)
-        {
-            TC_LOG_ERROR("scripts", "TillersFarmMgr: Player %u has last_growth_tick in far future (%lu), resetting to defaults", guidLow, static_cast<unsigned long>(tick));
-            return false;
-        }
-
         PlayerFarmState state;
         state.farmState     = phase;
         state.plotsUnlocked = plots;
-        state.lastGrowthTick = tick;
         state.bestFriendUnlocks = bestFriendUnlocks;
 
         _playerStates[guidLow] = state;
@@ -126,7 +117,6 @@ bool TillersFarmMgr::LoadPlayerState(Player* player)
     PlayerFarmState defaultState;
     defaultState.farmState     = FARM_STATE_FULL;
     defaultState.plotsUnlocked = 4;
-    defaultState.lastGrowthTick = time(nullptr);
 
     _playerStates[guidLow] = defaultState;
 
@@ -456,6 +446,9 @@ void TillersFarmMgr::SpawnPlayerFarm(Player* player)
         CreateSoilGos(player, plotsCount, phaseMask);
     }
 
+    // Spawn unlocked best friend companions
+    SpawnPlayerFarmCompanions(player, phaseMask);
+
     TC_LOG_INFO("scripts", "TillersFarmMgr: Spawned farm for player %u (farmState=%u, plots=%u, phaseMask=%u)",
                 guidLow, state.farmState, plotsCount, phaseMask);
 }
@@ -537,9 +530,8 @@ void TillersFarmMgr::SavePlayerFarm(Player* player)
         CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_PLAYER_FARM_STATE);
         stmt->setUInt8(0, state.farmState);
         stmt->setUInt8(1, state.plotsUnlocked);
-        stmt->setUInt64(2, static_cast<uint64>(state.lastGrowthTick));
-        stmt->setUInt16(3, state.bestFriendUnlocks);
-        stmt->setUInt32(4, guidLow);
+        stmt->setUInt16(2, state.bestFriendUnlocks);
+        stmt->setUInt32(3, guidLow);
         trans->Append(stmt);
     }
 
@@ -590,14 +582,53 @@ bool TillersFarmMgr::PlantSeed(Player* player, uint8 plotId, uint32 seedEntry)
     // Begin transaction for atomic seed consumption + state update
     CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
 
-    // Update plot state to SEEDED with maturity timestamp
-    time_t maturity = GetMaturityTime(seedEntry, plotId);
+    // Determine crop state on planting (retail mechanics)
+    // 1.1% chance of bursting (instant harvest), ~28% chance of water/pest problem
+    uint32 roll = urand(1, 1000);
+    bool bursting = roll <= 11;
+
+    FarmPlotState newState;
+    bool needsWater = false;
+    bool hasPests = false;
+    time_t maturity;
+
+    if (bursting)
+    {
+        // Bursting crop: instantly ready to harvest
+        newState = PLOT_READY_TO_HARVEST;
+        maturity = 0;
+        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u got a BURSTING crop on plot %u!", guidLow, plotId);
+    }
+    else
+    {
+        maturity = GetMaturityTime(seedEntry, plotId);
+
+        // Roll for water/pest problems (~28% combined)
+        uint32 problemRoll = urand(1, 1000);
+        if (problemRoll <= 140)
+        {
+            newState = PLOT_NEEDS_WATER;
+            needsWater = true;
+            TC_LOG_DEBUG("scripts", "TillersFarmMgr: Player %u crop on plot %u needs water", guidLow, plotId);
+        }
+        else if (problemRoll <= 280)
+        {
+            newState = PLOT_NEEDS_PEST_CONTROL;
+            hasPests = true;
+            TC_LOG_DEBUG("scripts", "TillersFarmMgr: Player %u crop on plot %u has pests", guidLow, plotId);
+        }
+        else
+        {
+            newState = PLOT_SEEDED;
+            TC_LOG_DEBUG("scripts", "TillersFarmMgr: Player %u crop on plot %u planted normally", guidLow, plotId);
+        }
+    }
 
     CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_PLAYER_FARM_PLOT_PLANT);
-    stmt->setUInt8(0, static_cast<uint8>(PLOT_SEEDED));
+    stmt->setUInt8(0, static_cast<uint8>(newState));
     stmt->setUInt32(1, seedEntry);
-    stmt->setBool(2, false);   // needs_watering = false initially
-    stmt->setBool(3, false);   // has_pests = false initially
+    stmt->setBool(2, needsWater);
+    stmt->setBool(3, hasPests);
     stmt->setUInt64(4, static_cast<uint64>(maturity));
     stmt->setUInt32(5, guidLow);
     stmt->setUInt8(6, plotId);
@@ -608,15 +639,15 @@ bool TillersFarmMgr::PlantSeed(Player* player, uint8 plotId, uint32 seedEntry)
     // Consume seed from inventory after DB commit succeeds
     player->DestroyItemCount(seedEntry, 1, true);
 
-    // Update local state immediately (transaction committed above)
-    plot.state       = PLOT_SEEDED;
-    plot.seedEntry   = seedEntry;
-    plot.needsWatering  = false;
-    plot.hasPests      = false;
+    // Update local state immediately
+    plot.state          = newState;
+    plot.seedEntry      = seedEntry;
+    plot.needsWatering  = needsWater;
+    plot.hasPests       = hasPests;
     plot.maturityTimestamp = maturity;
 
-    TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u planted seed %u on plot %u (matures at %lu)",
-                guidLow, seedEntry, plotId, static_cast<unsigned long>(maturity));
+    TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u planted seed %u on plot %u (state=%u, matures at %lu)",
+                guidLow, seedEntry, plotId, static_cast<uint8>(newState), static_cast<unsigned long>(maturity));
 
     return true;
 }
@@ -643,15 +674,42 @@ bool TillersFarmMgr::HarvestCrop(Player* player, uint8 plotId)
         return false;
     }
 
-    // Determine rewards based on crop type and friendship level (simplified)
-    uint32 rewardItem = plot.seedEntry;  // Return same item type as planted
-    uint8   rewardCount = 1;  // Standard harvest yield
+    // Determine rewards based on crop type
+    uint32 rewardItem = GetVegetableForSeed(plot.seedEntry);
+    uint8   rewardCount = TILLERS_HARVEST_YIELD;
 
-    if (rewardItem == 0)
-        return false;
+    if (rewardItem == 0 || rewardItem == plot.seedEntry)  // fallback: give seed back (legacy)
+    {
+        rewardItem = plot.seedEntry;
+        rewardCount = 1;
+    }
+
+    // Plump crop bonus: ~5% chance of 8 vegetables instead of 5
+    if (urand(1, 100) <= 5)
+    {
+        rewardCount += 3;
+        TC_LOG_DEBUG("scripts", "TillersFarmMgr: Player %u got a PLUMP harvest on plot %u!", guidLow, plotId);
+    }
 
     // Give rewards to player
     player->AddItem(rewardItem, rewardCount);
+
+    // Seed return: 50% chance of 1-3 seeds
+    if (urand(0, 1))
+    {
+        uint32 seedsReturned = urand(1, 3);
+        player->AddItem(plot.seedEntry, seedsReturned);
+        TC_LOG_DEBUG("scripts", "TillersFarmMgr: Player %u got %u seeds returned on plot %u", guidLow, seedsReturned, plotId);
+    }
+
+    // Award Tillers reputation (faction 1934)
+    // Retail: flat 50 reputation at level 90, 0 below 90 (guild perk adds 10)
+    if (player->getLevel() >= 90)
+    {
+        uint32 tillersFaction = 1934;
+        if (FactionEntry const* factionEntry = sFactionStore.LookupEntry(tillersFaction))
+            player->GetReputationMgr().ModifyReputation(factionEntry, 50);
+    }
 
     // Reset plot to SOIL_PREPARED state
     CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
@@ -714,6 +772,17 @@ void TillersFarmMgr::WaterPlot(Player* player, uint8 plotId)
     stmt->setUInt8(2, plotId);
     trans->Append(stmt);
 
+    // If plot was in NEEDS_WATER state, transition to growing
+    if (plot.state == PLOT_NEEDS_WATER)
+    {
+        plot.state = PLOT_GROWING;
+        CharacterDatabasePreparedStatement* stateStmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_PLAYER_FARM_PLOT_STATE);
+        stateStmt->setUInt8(0, static_cast<uint8>(PLOT_GROWING));
+        stateStmt->setUInt32(1, guidLow);
+        stateStmt->setUInt8(2, plotId);
+        trans->Append(stateStmt);
+    }
+
     CharacterDatabase.CommitTransaction(trans);
 
     // Update local state
@@ -754,6 +823,17 @@ void TillersFarmMgr::RemovePests(Player* player, uint8 plotId)
     stmt->setUInt32(1, guidLow);
     stmt->setUInt8(2, plotId);
     trans->Append(stmt);
+
+    // If plot was in NEEDS_PEST_CONTROL state, transition to growing
+    if (plot.state == PLOT_NEEDS_PEST_CONTROL)
+    {
+        plot.state = PLOT_GROWING;
+        CharacterDatabasePreparedStatement* stateStmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_PLAYER_FARM_PLOT_STATE);
+        stateStmt->setUInt8(0, static_cast<uint8>(PLOT_GROWING));
+        stateStmt->setUInt32(1, guidLow);
+        stateStmt->setUInt8(2, plotId);
+        trans->Append(stateStmt);
+    }
 
     CharacterDatabase.CommitTransaction(trans);
 
@@ -879,7 +959,6 @@ void TillersFarmMgr::ResetPlayerFarm(uint32 guidLow)
     PlayerFarmState defaultState;
     defaultState.farmState       = FARM_STATE_FULL;
     defaultState.plotsUnlocked   = 4;
-    defaultState.lastGrowthTick  = time(nullptr);
     _playerStates[guidLow] = defaultState;
 
     // Initialize all plots to empty
@@ -1082,10 +1161,10 @@ bool TillersFarmMgr::GetBestFriendUnlockPosition(uint32 entry, BestFriendUnlockP
     return false;
 }
 
-void TillersFarmMgr::SpawnBestFriendUnlock(Player* player, uint32 entry, uint32 phaseMask, float posX, float posY, float posZ, float orientation)
+Creature* TillersFarmMgr::SpawnBestFriendUnlock(Player* player, uint32 entry, uint32 phaseMask, float posX, float posY, float posZ, float orientation)
 {
     if (!player || !player->IsInWorld())
-        return;
+        return nullptr;
 
     Creature* unlock = player->SummonCreature(entry, Position(posX, posY, posZ, orientation), TEMPSUMMON_MANUAL_DESPAWN, 0, 0, player->GetGUID());
     if (unlock)
@@ -1093,8 +1172,57 @@ void TillersFarmMgr::SpawnBestFriendUnlock(Player* player, uint32 entry, uint32 
         unlock->SetPhaseMask(phaseMask, true);
         unlock->SetPrivateObjectOwner(player->GetGUID());
         _playerBestFriendUnlocks[player->GetGUID().GetCounter()].push_back(unlock->GetGUID());
-        TC_LOG_DEBUG("scripts", "TillersFarmMgr: Spawned best friend unlock %u for player %u", entry, player->GetGUID().GetCounter());
+        TC_LOG_DEBUG("scripts", "TillersFarmMgr: Spawned best friend creature %u for player %u", entry, player->GetGUID().GetCounter());
     }
+    return unlock;
+}
+
+GameObject* TillersFarmMgr::SpawnBestFriendUnlockGO(Player* player, uint32 entry, uint32 phaseMask, float posX, float posY, float posZ, float orientation)
+{
+    if (!player || !player->IsInWorld())
+        return nullptr;
+
+    GameObject* unlock = player->SummonGameObject(entry, posX, posY, posZ, orientation, { }, 0, GO_SUMMON_TIMED_OR_CORPSE_DESPAWN);
+    if (unlock)
+    {
+        unlock->SetPhaseMask(phaseMask, true);
+        _playerBestFriendUnlocks[player->GetGUID().GetCounter()].push_back(unlock->GetGUID());
+        TC_LOG_DEBUG("scripts", "TillersFarmMgr: Spawned best friend GO %u for player %u", entry, player->GetGUID().GetCounter());
+    }
+    return unlock;
+}
+
+void TillersFarmMgr::SpawnPlayerFarmCompanions(Player* player, uint32 phaseMask)
+{
+    if (!player || !player->IsInWorld())
+        return;
+
+    uint32 guidLow = player->GetGUID().GetCounter();
+    uint8 bucket = static_cast<uint8>(guidLow % TILLERS_FARM_MGR_MUTEX_BUCKETS);
+    std::lock_guard<std::mutex> lock(_mutexes[bucket]);
+
+    PlayerFarmState const& state = _playerStates[guidLow];
+
+    for (uint8 i = 0; i < 10; ++i)
+    {
+        BestFriendData const& companion = BestFriendCompanions[i];
+        if (!(state.bestFriendUnlocks & companion.bit))
+            continue;
+
+        BestFriendUnlockPosition pos;
+        if (!GetBestFriendUnlockPosition(companion.entry, pos))
+        {
+            TC_LOG_WARN("scripts", "TillersFarmMgr: No position for companion entry %u", companion.entry);
+            continue;
+        }
+
+        if (IsGameObjectEntry(companion.entry))
+            SpawnBestFriendUnlockGO(player, companion.entry, phaseMask, pos.posX, pos.posY, pos.posZ, pos.orientation);
+        else
+            SpawnBestFriendUnlock(player, companion.entry, phaseMask, pos.posX, pos.posY, pos.posZ, pos.orientation);
+    }
+
+    TC_LOG_DEBUG("scripts", "TillersFarmMgr: Spawned companions for player %u", guidLow);
 }
 
 void TillersFarmMgr::RemoveBestFriendUnlocks(Player* player)
@@ -1110,22 +1238,31 @@ void TillersFarmMgr::RemoveBestFriendUnlocks(Player* player)
     Map* map = player->GetMap();
     for (ObjectGuid const& guid : it->second)
     {
-        Creature* c = map->GetCreature(guid);
-        if (c)
-            c->DespawnOrUnsummon();
+        if (guid.IsGameObject())
+        {
+            GameObject* go = map->GetGameObject(guid);
+            if (go)
+                go->ForcedDespawn(0);
+        }
+        else if (guid.IsCreature())
+        {
+            Creature* c = map->GetCreature(guid);
+            if (c)
+                c->DespawnOrUnsummon();
+        }
     }
 
     TC_LOG_DEBUG("scripts", "TillersFarmMgr: Removed %zu best friend unlocks for player %u", it->second.size(), guidLow);
     _playerBestFriendUnlocks.erase(it);
 }
 
-bool TillersFarmMgr::IsBestFriend(Player* player) const
+bool TillersFarmMgr::IsBestFriend(Player* player, uint32 factionId) const
 {
-    if (!player)
+    if (!player || !factionId)
         return false;
 
-    int32 tillersRep = player->GetReputationRank(1934);
-    return tillersRep >= REP_EXALTED;
+    // Best Friend status requires Exalted reputation (42,000) with the NPC's friendship faction
+    return player->GetReputationRank(factionId) >= REP_EXALTED;
 }
 
 void TillersFarmMgr::UpdateBestFriendUnlockState(Player* player)
@@ -1140,64 +1277,23 @@ void TillersFarmMgr::UpdateBestFriendUnlockState(Player* player)
     PlayerFarmState& state = _playerStates[guidLow];
     bool changed = false;
 
-    if ((state.bestFriendUnlocks & BEST_FRIEND_SHAGGY) == 0 && IsBestFriend(player))
+    // Check each per-NPC best friend via reputation faction
+    for (uint8 i = 0; i < 9; ++i)
     {
-        state.bestFriendUnlocks |= BEST_FRIEND_SHAGGY;
-        changed = true;
-        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Shaggy the Yak (Best Friend)", guidLow);
-    }
-    if ((state.bestFriendUnlocks & BEST_FRIEND_FIFI) == 0 && IsBestFriend(player))
-    {
-        state.bestFriendUnlocks |= BEST_FRIEND_FIFI;
-        changed = true;
-        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Miss Fifi (Best Friend)", guidLow);
-    }
-    if ((state.bestFriendUnlocks & BEST_FRIEND_CHICKENS) == 0 && IsBestFriend(player))
-    {
-        state.bestFriendUnlocks |= BEST_FRIEND_CHICKENS;
-        changed = true;
-        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Hillpaw Chickens (Best Friend)", guidLow);
-    }
-    if ((state.bestFriendUnlocks & BEST_FRIEND_SHEEP) == 0 && IsBestFriend(player))
-    {
-        state.bestFriendUnlocks |= BEST_FRIEND_SHEEP;
-        changed = true;
-        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Sheep (Best Friend)", guidLow);
-    }
-    if ((state.bestFriendUnlocks & BEST_FRIEND_LUNA) == 0 && IsBestFriend(player))
-    {
-        state.bestFriendUnlocks |= BEST_FRIEND_LUNA;
-        changed = true;
-        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Luna the Cat (Best Friend)", guidLow);
-    }
-    if ((state.bestFriendUnlocks & BEST_FRIEND_PIGGY) == 0 && IsBestFriend(player))
-    {
-        state.bestFriendUnlocks |= BEST_FRIEND_PIGGY;
-        changed = true;
-        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Pigs (Best Friend)", guidLow);
-    }
-    if ((state.bestFriendUnlocks & BEST_FRIEND_ORANGE_TREE) == 0 && IsBestFriend(player))
-    {
-        state.bestFriendUnlocks |= BEST_FRIEND_ORANGE_TREE;
-        changed = true;
-        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Orange Tree (Best Friend)", guidLow);
-    }
-    if ((state.bestFriendUnlocks & BEST_FRIEND_FURNITURE) == 0 && IsBestFriend(player))
-    {
-        state.bestFriendUnlocks |= BEST_FRIEND_FURNITURE;
-        changed = true;
-        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Furniture (Best Friend)", guidLow);
-    }
-    if ((state.bestFriendUnlocks & BEST_FRIEND_MAILBOX) == 0 && IsBestFriend(player))
-    {
-        state.bestFriendUnlocks |= BEST_FRIEND_MAILBOX;
-        changed = true;
-        TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Mailbox (Best Friend)", guidLow);
+        BestFriendData const& companion = BestFriendCompanions[i];
+        if ((state.bestFriendUnlocks & companion.bit) == 0 && IsBestFriend(player, companion.factionId))
+        {
+            state.bestFriendUnlocks |= companion.bit;
+            changed = true;
+            TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked companion (entry %u)", guidLow, companion.entry);
+        }
     }
 
-    if ((state.bestFriendUnlocks & BEST_FRIEND_LOST_DOG) == 0 && player->IsQuestRewarded(30526))
+    // Lost Dog — quest-based, not reputation
+    BestFriendData const& lostDog = BestFriendCompanions[9]; // index 9 = BEST_FRIEND_LOST_DOG
+    if ((state.bestFriendUnlocks & lostDog.bit) == 0 && player->IsQuestRewarded(30526))
     {
-        state.bestFriendUnlocks |= BEST_FRIEND_LOST_DOG;
+        state.bestFriendUnlocks |= lostDog.bit;
         changed = true;
         TC_LOG_INFO("scripts", "TillersFarmMgr: Player %u unlocked Lost Dog (quest 30526)", guidLow);
     }

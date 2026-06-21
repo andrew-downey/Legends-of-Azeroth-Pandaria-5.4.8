@@ -196,6 +196,7 @@ set(scripts_STAT_SRCS
   Pandaria/TillersZoneHooks.cpp
   Pandaria/TillersSoilScript.cpp
   Pandaria/TillersWorkstation.cpp
+  Pandaria/TillersWorldHooks.cpp
 )
 
 message("  -> Prepared: Pandaria")

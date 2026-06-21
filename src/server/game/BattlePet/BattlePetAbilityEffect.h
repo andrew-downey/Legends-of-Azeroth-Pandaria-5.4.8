@@ -82,6 +82,7 @@ public:
     void HandleNegativeAura();
     void HandlePeriodicTrigger();
     void HandlePeriodicPositiveTrigger();
+    void HandleHealCasterPercentNotState();
     void HandleDamageToggleAura();
     void HandleDamageHitState();
     void HandleExtraAttackFirst();

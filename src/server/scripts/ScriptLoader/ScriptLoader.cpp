@@ -1040,6 +1040,7 @@ void AddTillersZoneHooks();
 void AddTillersSoilScript();
 void AddTillersWorkstation();
 void AddTillersCommands();
+void AddTillersWorldHooks();
 
 // Pets
 void AddSC_generic_pet_scripts();
@@ -1161,6 +1162,7 @@ void AddWorldScripts()
     AddSC_on_duel();
     AddSC_transmog();
     AddSC_world_map_scripts();
+    AddTillersWorldHooks();
 #endif
 }
 

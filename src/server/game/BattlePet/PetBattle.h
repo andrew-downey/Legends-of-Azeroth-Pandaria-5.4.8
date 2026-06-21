@@ -432,6 +432,16 @@ public:
     // TODO: This is shit
     void AddEffect(PetBattleEffect const& effect) { m_effects.push_back(effect); }
 
+    uint32 GetWeatherAbility() const { return m_weatherAbility; }
+    void SetWeatherAbility(uint32 ability) { m_weatherAbility = ability; }
+    int32 GetWeatherDuration() const { return m_weatherDuration; }
+    void SetWeatherDuration(int32 duration) { m_weatherDuration = duration; }
+    uint32 GetWeatherAbilityEffect() const { return m_weatherAbilityEffect; }
+    void SetWeatherAbilityEffect(uint32 effect) { m_weatherAbilityEffect = effect; }
+
+    void ClearWeatherStates();
+    void ApplyWeatherStates(uint32 ability, bool apply);
+
 private:
     void SendFinalizeLocation(PetBattleRequest const& request);
     void SendInitialUpdate(Player* player);
@@ -453,6 +463,11 @@ private:
 
     BattlePet* m_cagedPet = nullptr;
     PetBattleTeam* m_winningTeam = nullptr;
+
+    uint32 m_weatherAbility = 0;                        // currently active weather ability (0 = none)
+    int32 m_weatherDuration = 0;                        // original duration for re-application
+    uint32 m_weatherAbilityEffect = 0;                  // original ability effect entry ID
+    std::map<uint32, int32> m_weatherStateDeltas;        // stateId → cumulative delta for active weather
 };
 
 //          petBattleId

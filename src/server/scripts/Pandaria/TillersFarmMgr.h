@@ -97,7 +97,6 @@ struct PlayerFarmState
     uint8   farmState       = FARM_STATE_FULL;
     uint8   plotsUnlocked   = 4;        // number of unlocked patches
     uint16  bestFriendUnlocks   = 0;    // bitmask of unlocked best friends
-    time_t  lastGrowthTick  = 0;        // absolute timestamp for drift-free scheduling
 };
 
 typedef std::map<uint8, FarmPlotData> PlotMap;       // plot_id -> data
@@ -141,6 +140,14 @@ struct BestFriendUnlockPosition
     float orientation = 0.0f;
 };
 
+// Best Friend companion metadata — maps bitmask → entry → faction
+struct BestFriendData
+{
+    uint16      bit;
+    uint32      entry;
+    uint32      factionId;  // 0 = quest-based (Lost Dog 30526)
+};
+
 // Yoon spawn data loaded from creature table
 struct YoonSpawnData
 {
@@ -177,6 +184,61 @@ static inline uint32 const ORANGE_TREE_ENTRY            = 237243;
 static inline uint32 const FURNITURE_ENTRY              = 237244;
 static inline uint32 const MAILBOX_ENTRY                = 237242;
 static inline uint32 const LOST_DOG_ENTRY               = 85826;
+
+// Best Friend companion lookup — maps bitmask to creature/GO entry and faction ID
+// Order matches the bitmask constants above for indexed access
+static inline BestFriendData const BestFriendCompanions[10] =
+{
+    { BEST_FRIEND_SHAGGY,       SHAGGY_YAK_ENTRY,       1283 },
+    { BEST_FRIEND_FIFI,         MISS_FIFI_MUSHAN_ENTRY, 1279 },
+    { BEST_FRIEND_CHICKENS,     HILLPAW_CHICKENS_ENTRY, 1276 },
+    { BEST_FRIEND_SHEEP,        FARM_SHEEP_ENTRY,       1277 },
+    { BEST_FRIEND_LUNA,         LUNA_CAT_ENTRY,         1275 },
+    { BEST_FRIEND_PIGGY,        PIGGY_PIG_ENTRY,        1282 },
+    { BEST_FRIEND_ORANGE_TREE,  ORANGE_TREE_ENTRY,      1278 },
+    { BEST_FRIEND_FURNITURE,    FURNITURE_ENTRY,        1280 },
+    { BEST_FRIEND_MAILBOX,      MAILBOX_ENTRY,          1281 },
+    { BEST_FRIEND_LOST_DOG,     LOST_DOG_ENTRY,         0 },
+};
+
+// Helper: true if the entry is a gameobject (not a creature)
+inline bool IsGameObjectEntry(uint32 entry)
+{
+    return entry == ORANGE_TREE_ENTRY || entry == FURNITURE_ENTRY || entry == MAILBOX_ENTRY;
+}
+
+// Seed item → vegetable item mapping for Tillers farming rewards
+// Retail: base harvest yield is 5 vegetables per crop
+static inline uint32 const TILLERS_VEGETABLE_GREEN_CABBAGE = 74840;
+static inline uint32 const TILLERS_VEGETABLE_JUICYCRUNCH_CARROT = 74841;
+static inline uint32 const TILLERS_VEGETABLE_MOGU_PUMPKIN = 74842;
+static inline uint32 const TILLERS_VEGETABLE_SCALLIONS = 74843;
+static inline uint32 const TILLERS_VEGETABLE_RED_BLOSSOM_LEEK = 74844;
+static inline uint32 const TILLERS_VEGETABLE_JADE_SQUASH = 74847;
+static inline uint32 const TILLERS_VEGETABLE_STRIPED_MELON = 74848;
+static inline uint32 const TILLERS_VEGETABLE_PINK_TURNIP = 74849;
+static inline uint32 const TILLERS_VEGETABLE_WHITE_TURNIP = 74850;
+
+// Default harvest yield per crop (base retail value)
+static inline uint8 const TILLERS_HARVEST_YIELD = 5;
+
+// Seed item → vegetable item mapping
+inline uint32 GetVegetableForSeed(uint32 seedEntry)
+{
+    switch (seedEntry)
+    {
+        case 79102:  return TILLERS_VEGETABLE_GREEN_CABBAGE;     // Green Cabbage Seeds
+        case 80590:  return TILLERS_VEGETABLE_JUICYCRUNCH_CARROT; // Juicycrunch Carrot Seeds
+        case 80591:  return TILLERS_VEGETABLE_SCALLIONS;          // Scallion Seeds
+        case 80592:  return TILLERS_VEGETABLE_MOGU_PUMPKIN;       // Mogu Pumpkin Seeds
+        case 80593:  return TILLERS_VEGETABLE_RED_BLOSSOM_LEEK;   // Red Blossom Leek Seeds
+        case 80594:  return TILLERS_VEGETABLE_PINK_TURNIP;        // Pink Turnip Seeds
+        case 80595:  return TILLERS_VEGETABLE_WHITE_TURNIP;       // White Turnip Seeds
+        case 89328:  return TILLERS_VEGETABLE_JADE_SQUASH;        // Jade Squash Seeds
+        case 89329:  return TILLERS_VEGETABLE_STRIPED_MELON;      // Striped Melon Seeds
+        default:     return 0;  // unknown seed
+    }
+}
 
 #define TILLERS_FARM_MGR_MUTEX_BUCKETS 64
 
@@ -353,9 +415,20 @@ private:
     void RemoveObstacles(Player* player);
 
     /**
-     * Spawn a best friend unlock (creature or GO) based on farm state.
+     * Spawn all unlocked best friend companions for a player's farm.
+     * Iterates bestFriendUnlocks bitmask, spawning creatures and GOs.
      */
-    void SpawnBestFriendUnlock(Player* player, uint32 entry, uint32 phaseMask, float posX, float posY, float posZ, float orientation);
+    void SpawnPlayerFarmCompanions(Player* player, uint32 phaseMask);
+
+    /**
+     * Spawn a best friend unlock creature.
+     */
+    Creature* SpawnBestFriendUnlock(Player* player, uint32 entry, uint32 phaseMask, float posX, float posY, float posZ, float orientation);
+
+    /**
+     * Spawn a best friend unlock gameobject.
+     */
+    GameObject* SpawnBestFriendUnlockGO(Player* player, uint32 entry, uint32 phaseMask, float posX, float posY, float posZ, float orientation);
 
     /**
      * Remove all dynamically spawned best friend unlock creatures/GOs for a player.
@@ -379,9 +452,10 @@ private:
     bool GetBestFriendUnlockPosition(uint32 entry, BestFriendUnlockPosition& out) const;
 
     /**
-     * Check if a Tillers friend has Best Friend status (Exalted reputation).
+     * Check if a player has Best Friend status with a specific Tillers NPC (Exalted reputation, factionId).
+     * For Lost Dog (factionId=0), returns false — use IsQuestRewarded instead.
      */
-    bool IsBestFriend(Player* player) const;
+    bool IsBestFriend(Player* player, uint32 factionId) const;
 
     /**
      * Update best friend unlock state based on current Tillers reputations.

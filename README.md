@@ -1,6 +1,6 @@
 **Mists of Pandaria 5.4.8 Build 18414**
 
-> **Notable additions over base Legends of Azeroth:**
+> **Notable additions over base Legends of Azeroth (work in progress — features are actively developed and improving; some may have rough edges):**
 > * **Pet Battle System** — Full pet battle implementation with weather, states, and racial passives (Dragonkin, Undead, etc.)
 > * **Battle Pet Trainer Battles** — Fully scripted trainer NPC encounters
 > * **Wild Pet Spawns** — Hundreds of retail-accurate wild pet spawns across Kalimdor, Eastern Kingdoms, Northrend, Deepholm, and more

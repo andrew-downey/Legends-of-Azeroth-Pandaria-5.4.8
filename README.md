@@ -5,7 +5,7 @@
 > * **Battle Pet Trainer Battles** — Fully scripted trainer NPC encounters
 > * **Wild Pet Spawns** — Hundreds of retail-accurate wild pet spawns across Kalimdor, Eastern Kingdoms, Northrend, Deepholm, and more
 > * **Tillers Farm System** — Complete Valley of the Four Winds farming (16 plots, 10 companions, crop problems, daily reset cycle, per-NPC friendships)
-> * **Database fixes** — Quests, creatures, zones, flying mounts, instances (Auchenai Crypts), and dungeon reputation corrections
+> * **Database fixes** — Quests, creatures, zones, flying mounts, instances, and dungeon reputation corrections
 > * **SQL migration framework** — All changes tracked as sequential migrations in `sql/updates/`
 
 Discord link: https://discord.gg/byBCHbwJEg

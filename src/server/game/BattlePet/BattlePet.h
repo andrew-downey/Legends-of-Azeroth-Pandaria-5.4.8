@@ -20,6 +20,7 @@
 
 #include "Common.h"
 #include "BattlePetAbilityEffect.h"
+#include "ObjectGuid.h"
 #include "BattlePetAura.h"
 
 class Player;

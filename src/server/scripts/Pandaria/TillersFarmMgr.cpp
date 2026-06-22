@@ -704,7 +704,7 @@ bool TillersFarmMgr::HarvestCrop(Player* player, uint8 plotId)
 
     // Award Tillers reputation (faction 1934)
     // Retail: flat 50 reputation at level 90, 0 below 90 (guild perk adds 10)
-    if (player->getLevel() >= 90)
+    if (player->GetLevel() >= 90)
     {
         uint32 tillersFaction = 1934;
         if (FactionEntry const* factionEntry = sFactionStore.LookupEntry(tillersFaction))

@@ -94,3 +94,16 @@ if (USE_MODULES)
 	# add core modules
 	add_subdirectory(modules)
 endif()
+
+include(CTest)
+if(BUILD_TESTING)
+  list(APPEND CMAKE_MODULE_PATH
+    "${Catch2_SOURCE_DIR}/contrib")
+  include(Catch)
+
+  add_subdirectory(tests)
+
+  if (NOT WITH_SOURCE_TREE STREQUAL "hierarchical-folders")
+    set_property(GLOBAL PROPERTY USE_FOLDERS OFF)
+  endif()
+endif()

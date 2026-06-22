@@ -103,6 +103,7 @@ add_library(scripts STATIC
 target_include_directories(scripts
   PUBLIC
     ${CMAKE_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}
     boost
     common
   PRIVATE   
